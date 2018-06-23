@@ -60,8 +60,8 @@ def main(count=0):
     points_x = [point.x for point in points]
     points_y = [point.y for point in points]
     tmp = [(point.x, point.y) for point in points]
-    tmp2 = [(point.x, point.y) for point in send_points]
-    print(tmp2)
+    # tmp2 = [(point.x, point.y) for point in send_points]
+    print(tmp)
     print(path.get_flip_point())
 
     # plot
