@@ -237,6 +237,7 @@ class Path(FlipPoint):
     def __init__(self, field, robot, two_stage_table, table_under, table_middle, table_up):
         super().__init__(field, robot, table_under, table_middle, table_up)
         self.two_stage_table: Table = two_stage_table
+        self.flip_points = []
 
     def make_mid_point(self, _table1, _table2):
         table1: Table = _table1
@@ -270,18 +271,31 @@ class Path(FlipPoint):
 
     def path_planning(self):
         self.make_flip_point()
+        flip_point_index = 0
         path = []
         path.append(self.two_stage_table.goal)
+        self.flip_points.append((flip_point_index, self.two_stage_table.goal_state))
         if self.table_under.goal.x < self.two_stage_table.goal.x:
             path.append(Point(self.table_under.goal.x, 4500))
+            flip_point_index += 2
+            self.flip_points.append((flip_point_index, self.table_under.goal_state))
         else:
             path.append(Point(self.two_stage_table.goal.x, 4500))
             path.append(Point(self.table_under.goal.x, 4500))
+            flip_point_index += 3
+            self.flip_points.append((flip_point_index, self.table_under.goal_state))
         path.append(self.table_under.goal)
         mid = self.make_mid_point(self.table_under, self.table_middle)
         path.append(mid)
         path.append(self.table_middle.goal)
+        flip_point_index += 2
+        self.flip_points.append((flip_point_index, self.table_middle.goal_state))
         mid = self.make_mid_point(self.table_middle, self.table_up)
         path.append(mid)
         path.append(self.table_up.goal)
+        flip_point_index += 2
+        self.flip_points.append((flip_point_index, self.table_up.goal_state))
         return path
+
+    def get_flip_point(self):
+        return self.flip_points

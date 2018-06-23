@@ -2,9 +2,10 @@ import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 import random
-from bottleflip.objects import Robot, Field, Table, Path
+from bottleflip.objects import Robot, Field, Table, Path, Point
+from tcp.Tcp import Tcp
 
-
+random_move = True
 robot_width = 1000
 two_stage_table_x, two_stage_table_y = 3000, 3500
 two_stage_table_width = 800
@@ -26,9 +27,15 @@ def main(count=0):
     # create instance
     robot = Robot(robot_width)
     field = Field(field_width, field_height)
-    table_under = Table(random.randint(move_table_randomize_area_min, move_table_randomize_area_max+1), 5500, move_table_width, robot_width)
-    table_middle = Table(random.randint(move_table_randomize_area_min, move_table_randomize_area_max+1), 6500, move_table_width, robot_width)
-    table_up = Table(random.randint(move_table_randomize_area_min, move_table_randomize_area_max+1), 7500, move_table_width, robot_width)
+    if random_move:
+        table_under = Table(random.randint(move_table_randomize_area_min, move_table_randomize_area_max+1), 5500, move_table_width, robot_width)
+        table_middle = Table(random.randint(move_table_randomize_area_min, move_table_randomize_area_max+1), 6500, move_table_width, robot_width)
+        table_up = Table(random.randint(move_table_randomize_area_min, move_table_randomize_area_max+1), 7500, move_table_width, robot_width)
+        print(table_under.x, table_middle.x, table_up.x)
+    else:
+        table_under = Table(3479, 5500, move_table_width, robot_width)
+        table_middle = Table(3009, 6500, move_table_width, robot_width)
+        table_up = Table(1363, 7500, move_table_width, robot_width)
     two_stage_table = Table(two_stage_table_x, two_stage_table_y, two_stage_table_width, robot_width)
     two_stage_table.set_goal('LEFT')
     path = Path(field=field,
@@ -40,8 +47,22 @@ def main(count=0):
 
     # path planning
     points = path.path_planning()
+    try:
+        send_points = list(points)
+        flip_points = path.get_flip_point()
+        for i in range(8-len(send_points)):
+            print(i)
+            send_points.append(Point(0, 0))
+        tcp = Tcp()
+        tcp.send(send_points, flip_points)
+    except Exception as error:
+        print(error)
     points_x = [point.x for point in points]
     points_y = [point.y for point in points]
+    tmp = [(point.x, point.y) for point in points]
+    tmp2 = [(point.x, point.y) for point in send_points]
+    print(tmp2)
+    print(path.get_flip_point())
 
     # plot
     field.set_ax(ax)
