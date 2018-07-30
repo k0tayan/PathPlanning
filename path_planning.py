@@ -6,8 +6,10 @@ from bottleflip.objects import Robot, Field, Table, Path, Point
 from tcp.Tcp import Tcp
 
 random_move = True
+zone = 'red'
 robot_width = 1000
-two_stage_table_x, two_stage_table_y = 3000, 3500
+two_stage_table_red_zone_x, two_stage_table_red_zone_y = 3000, 3500
+two_stage_table_blue_zone_x, two_stage_table_blue_zone_y = 2000, 3500
 two_stage_table_width = 800
 move_table_width = 500
 field_width, field_height = 5000, 8500
@@ -36,14 +38,19 @@ def main(count=0):
         table_under = Table(3479, 5500, move_table_width, robot_width)
         table_middle = Table(3009, 6500, move_table_width, robot_width)
         table_up = Table(1363, 7500, move_table_width, robot_width)
-    two_stage_table = Table(two_stage_table_x, two_stage_table_y, two_stage_table_width, robot_width)
-    two_stage_table.set_goal('LEFT')
+    if zone == 'red':
+        two_stage_table = Table(two_stage_table_red_zone_x, two_stage_table_red_zone_y, two_stage_table_width, robot_width)
+        two_stage_table.set_goal('LEFT')
+    else: # zone == 'blue
+        two_stage_table = Table(two_stage_table_blue_zone_x, two_stage_table_blue_zone_y, two_stage_table_width, robot_width)
+        two_stage_table.set_goal('RIGHT')
     path = Path(field=field,
                 robot=robot,
                 two_stage_table=two_stage_table,
                 table_under=table_under,
                 table_middle=table_middle,
-                table_up=table_up)
+                table_up=table_up,
+                zone=zone)
 
     # path planning
     points = path.path_planning()
@@ -53,8 +60,8 @@ def main(count=0):
         for i in range(8-len(send_points)):
             print(i)
             send_points.append(Point(0, 0))
-        tcp = Tcp()
-        tcp.send(send_points, flip_points)
+        # tcp = Tcp()
+        # tcp.send(send_points, flip_points)
     except Exception as error:
         print(error)
     points_x = [point.x for point in points]
