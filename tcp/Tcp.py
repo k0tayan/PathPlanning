@@ -32,8 +32,9 @@ xx:
 """
 
 class Tcp:
-    def __init__(self, host='192.168.13.13', port=10001):
+    def __init__(self, host='192.168.11.13', port=10001):
         self._socket = socket.socket()
+        self._socket.settimeout(3)
         try:
             self._socket.connect((host, port))
         except Exception as error:
@@ -70,6 +71,6 @@ class Tcp:
         # for i, b in enumerate(buf):
            #  print("data[{0}]: 0b{1}".format(i, format(b, 'b').zfill(8)))
         print("check_sum:{0}, sum:{1}".format(buf[0] & 0x7f, sum(buf[1:]) & 0x7f))
-        # print(buf)
+        print(buf)
         p = struct.pack('B' * len(buf), *buf)
         self._socket.send(p)
