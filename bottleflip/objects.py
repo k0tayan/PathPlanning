@@ -1,6 +1,13 @@
 import numpy as np
 import matplotlib
 
+class MoveTableCoordinate:
+    def __init__(self, under, middle, up, zone):
+        self.under = under
+        self.middle = middle
+        self.up = up
+        self.zone = zone
+
 
 class Point:
     def __init__(self, x, y):
@@ -276,11 +283,11 @@ class Path(FlipPoint):
         path = []
         path.append(self.two_stage_table.goal)
         self.flip_points.append((flip_point_index, self.two_stage_table.goal_state))
-        if self.zone =='red' and self.table_under.goal.x < self.two_stage_table.goal.x:
+        if self.zone == 'red' and self.table_under.goal.x < self.two_stage_table.goal.x:
             path.append(Point(self.table_under.goal.x, 4500))
             flip_point_index += 2
             self.flip_points.append((flip_point_index, self.table_under.goal_state))
-        elif self.zone =='blue' and self.table_under.goal.x > self.two_stage_table.goal.x:
+        elif self.zone == 'blue' and self.table_under.goal.x > self.two_stage_table.goal.x:
             path.append(Point(self.table_under.goal.x, 4500))
             flip_point_index += 2
             self.flip_points.append((flip_point_index, self.table_under.goal_state))
