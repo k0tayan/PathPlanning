@@ -33,10 +33,14 @@ xx:
 
 class Tcp:
     def __init__(self, host='192.168.11.13', port=10001):
+        self.host = host
+        self.port = port
+
+    def connect(self):
         self._socket = socket.socket()
         self._socket.settimeout(3)
         try:
-            self._socket.connect((host, port))
+            self._socket.connect((self.host, self.port))
         except Exception as error:
             raise Exception('Cant\'t connect to host\n' + str(error))
 
@@ -74,3 +78,14 @@ class Tcp:
         print(buf)
         p = struct.pack('B' * len(buf), *buf)
         self._socket.send(p)
+
+    def server(self):
+        self.serversock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.serversock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.serversock.bind(('localhost', 4000))  # IPとPORTを指定してバインドします
+        self.serversock.listen(10)
+        self.clientsock, client_address = self.serversock.accept()  # 接続されればデータを格納
+
+    def receive(self):
+        rcvmsg = self.clientsock.recv(13)
+        return rcvmsg
