@@ -75,14 +75,13 @@ class Tcp:
         # for i, b in enumerate(buf):
            #  print("data[{0}]: 0b{1}".format(i, format(b, 'b').zfill(8)))
         print("check_sum:{0}, sum:{1}".format(buf[0] & 0x7f, sum(buf[1:]) & 0x7f))
-        print(buf)
         p = struct.pack('B' * len(buf), *buf)
         self._socket.send(p)
 
     def server(self):
         self.serversock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.serversock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        self.serversock.bind(('localhost', 4000))  # IPとPORTを指定してバインドします
+        self.serversock.bind((self.host, self.port))  # IPとPORTを指定してバインドします
         self.serversock.listen(10)
         self.clientsock, client_address = self.serversock.accept()  # 接続されればデータを格納
 
