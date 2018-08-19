@@ -3,9 +3,14 @@ import matplotlib
 
 class MoveTableCoordinate:
     def __init__(self, under, middle, up, zone):
-        self.under = under
-        self.middle = middle
-        self.up = up
+        if not zone:
+            self.under = 5000 - under
+            self.middle = 5000- middle
+            self.up = 5000 - up
+        else:
+            self.under = under
+            self.middle = middle
+            self.up = up
         self.zone = zone
 
 
@@ -283,31 +288,43 @@ class Path(FlipPoint):
         path = []
         path.append(self.two_stage_table.goal)
         self.flip_points.append((flip_point_index, self.two_stage_table.goal_state))
+        flip_point_index += 1
         if self.zone == 'red' and self.table_under.goal.x < self.two_stage_table.goal.x:
             path.append(Point(self.table_under.goal.x, 4500))
-            flip_point_index += 2
+            flip_point_index += 1
             self.flip_points.append((flip_point_index, self.table_under.goal_state))
         elif self.zone == 'blue' and self.table_under.goal.x > self.two_stage_table.goal.x:
             path.append(Point(self.table_under.goal.x, 4500))
-            flip_point_index += 2
+            flip_point_index += 1
             self.flip_points.append((flip_point_index, self.table_under.goal_state))
         else:
             path.append(Point(self.two_stage_table.goal.x, 4500))
             path.append(Point(self.table_under.goal.x, 4500))
-            flip_point_index += 3
+            flip_point_index += 2
             self.flip_points.append((flip_point_index, self.table_under.goal_state))
         path.append(self.table_under.goal)
+        flip_point_index += 1
         mid = self.make_mid_point(self.table_under, self.table_middle)
-        path.append(mid)
+        if self.compare_points(mid, self.table_under.goal):
+            flip_point_index += 0
+        else:
+            path.append(mid)
+            flip_point_index += 1
         path.append(self.table_middle.goal)
-        flip_point_index += 2
         self.flip_points.append((flip_point_index, self.table_middle.goal_state))
+        flip_point_index += 1
         mid = self.make_mid_point(self.table_middle, self.table_up)
-        path.append(mid)
+        if self.compare_points(mid, self.table_middle.goal):
+            flip_point_index += 0
+        else:
+            path.append(mid)
+            flip_point_index += 1
         path.append(self.table_up.goal)
-        flip_point_index += 2
         self.flip_points.append((flip_point_index, self.table_up.goal_state))
         return path
 
     def get_flip_point(self):
         return self.flip_points
+
+    def compare_points(self, point_1, point_2):
+        return ( point_1.x == point_2.x ) and ( point_1.y == point_2.y)
