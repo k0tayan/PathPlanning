@@ -23,7 +23,7 @@ kizunaai_list = np.asarray(kizunaai)
 fig = plt.figure()
 ax = plt.axes()
 plt.imshow(kizunaai_list)
-tcp = Tcp()
+tcp = Tcp('localhost', 4000)
 
 
 class prosess(threading.Thread):  # マルチスレッド処理
@@ -101,8 +101,9 @@ def main(count=0):
             for i in range(8-len(send_points)):
                 print(i)
                 send_points.append(Point(0, 0))
-            # tcp = Tcp()
-            # tcp.send(send_points, flip_points)
+            #to_xport = Tcp()
+            #to_xport.connect()
+            #to_xport.send(send_points, flip_points)
         except Exception as error:
             print(error)
         points_x = [point.x for point in points]
