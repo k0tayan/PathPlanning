@@ -6,8 +6,8 @@ from bottleflip.objects import Robot, Field, Table, Path, Point
 from tcp.Tcp import Tcp
 
 random_move = True
-zone = 'red'
-robot_width = 1000
+zone = 'blue'
+robot_width = 1200
 two_stage_table_red_zone_x, two_stage_table_red_zone_y = 3000, 3500
 two_stage_table_blue_zone_x, two_stage_table_blue_zone_y = 2000, 3500
 two_stage_table_width = 800
@@ -35,9 +35,9 @@ def main(count=0):
         table_up = Table(random.randint(move_table_randomize_area_min, move_table_randomize_area_max+1), 7500, move_table_width, robot_width)
         print(table_under.x, table_middle.x, table_up.x)
     else:
-        table_under = Table(3479, 5500, move_table_width, robot_width)
-        table_middle = Table(3009, 6500, move_table_width, robot_width)
-        table_up = Table(1363, 7500, move_table_width, robot_width)
+        table_under = Table(2500, 5500, move_table_width, robot_width)
+        table_middle = Table(2500, 6500, move_table_width, robot_width)
+        table_up = Table(2500, 7500, move_table_width, robot_width)
     if zone == 'red':
         two_stage_table = Table(two_stage_table_red_zone_x, two_stage_table_red_zone_y, two_stage_table_width, robot_width)
         two_stage_table.set_goal('LEFT')
@@ -58,15 +58,15 @@ def main(count=0):
         send_points = list(points)
         flip_points = path.get_flip_point()
         for i in range(8-len(send_points)):
-            print(i)
             send_points.append(Point(0, 0))
-        # tcp = Tcp()
-        # tcp.send(send_points, flip_points)
+        tcp = Tcp()
+        tcp.connect()
+        tcp.send(send_points, flip_points)
     except Exception as error:
         print(error)
     points_x = [point.x for point in points]
     points_y = [point.y for point in points]
-    tmp = [(point.x, point.y) for point in points]
+    tmp = [(point.x, point.y) for point in send_points]
     # tmp2 = [(point.x, point.y) for point in send_points]
     print(tmp)
     print(path.get_flip_point())
