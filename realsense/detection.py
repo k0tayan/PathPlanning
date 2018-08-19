@@ -53,11 +53,11 @@ def return_radius(a):
 
 
 def radius_filter(a):
-    return 200 > a.radius > 10
+    return 200 > a.radius > 1
 
 
 def distance_filter(a):
-    return 0.5 < a.dist < 7
+    return 0.5 < a.dist < 6.5
 
 
 def nothing(x):
@@ -85,7 +85,7 @@ def make_coordinate(tables):
 
 def send_coordinate(under, middle, up):
     if is_tcp_available:
-        b = struct.pack("iii?", under, middle, up, 1)
+        b = struct.pack("iii?", under, middle, up, 0)
         cl.send(b)
 
 
@@ -126,6 +126,7 @@ try:
             depth = frames.get_depth_frame()
             color_frame = frames.get_color_frame()
             color_image = np.asanyarray(color_frame.get_data())
+            color_image_copy = color_image
 
             color_image = cv2.medianBlur(color_image, 5)
             hsv = cv2.cvtColor(color_image, cv2.COLOR_BGR2HSV)
@@ -151,7 +152,7 @@ try:
             # for y in range(480):
             #    for x in range(640):
             #        dist = depth.get_distance(x, y)
-            #        if 5 < dist:
+            #        if 6.7 < dist:
             #            thresh[y][x] = 0
             # print(thresh)
 
@@ -188,8 +189,8 @@ try:
 
             # 画面に描画
             for i, table in enumerate(tables):
-                img = cv2.circle(color_image, table.center, table.radius, (0, 255, 0), 2)
-                img = cv2.circle(color_image, table.center, 3, (0, 255, 0), 2)
+                img = cv2.circle(color_image_copy, table.center, table.radius, (0, 255, 0), 2)
+                img = cv2.circle(color_image_copy, table.center, 3, (0, 255, 0), 2)
                 if table.center[0] < 178:
                     table.type = 'under'
                     # under = np.append(under, table.dist)
