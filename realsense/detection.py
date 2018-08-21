@@ -14,14 +14,21 @@ path = os.path.dirname(os.path.abspath(__file__))
 
 width = 640
 height = 480
+# width = 1280
+# height = 720
 pipeline = rs.pipeline()
 config = rs.config()
 config.enable_stream(rs.stream.depth, width, height, rs.format.z16, 30)
-config.enable_stream(rs.stream.color, width, height, rs.format.bgr8, 30)
+config.enable_stream(rs.stream.color, width, height, rs.format.bgr8,30)
 pipeline.start(config)
 lower_white = np.array([0, 0, 100])
 back_image = cv2.imread(path + '/field_background.png', 0)
 util = Utils()
+count = 300
+nud, nmd, nup = 0, 0, 0
+under = np.array([])
+middle = np.array([])
+up = np.array([])
 
 def putText(img, text, pos, color):
     cv2.putText(img, text, tuple(pos), cv2.FONT_HERSHEY_SIMPLEX, 1, color, 2, cv2.LINE_AA)
@@ -54,6 +61,7 @@ try:
             depth = frames.get_depth_frame()
             color_frame = frames.get_color_frame()
             color_image = np.asanyarray(color_frame.get_data())
+            # color_image = cv2.resize(color_image, (640, 360))
             color_image_copy = color_image
 
             color_image = cv2.medianBlur(color_image, 5)
@@ -119,12 +127,33 @@ try:
             for i, table in enumerate(tables):
                 img = cv2.circle(color_image_copy, table.center, table.radius, (0, 255, 0), 2)
                 img = cv2.circle(color_image_copy, table.center, 3, (0, 255, 0), 2)
-                if table.center[0] < 178:
+                if table.center[0] < 268:
                     table.type = 'under'
-                if 178 <= table.center[0] < 376:
+                    under = np.append(under, table.dist)
+                    if under.size > count:
+                        under = np.delete(under, 0)
+                        table.dist = round(under.mean(), 3)
+                    else:
+                        nud += 1
+                        table.dist = 0
+                if 268 <= table.center[0] < 360:
                     table.type = 'middle'
-                if 376 <= table.center[0]:
+                    middle = np.append(middle, table.dist)
+                    if middle.size > count:
+                        middle = np.delete(middle, 0)
+                        table.dist = round(middle.mean(), 3)
+                    else:
+                        nmd += 1
+                        table.dist = 0
+                if 360 <= table.center[0]:
                     table.type = 'up'
+                    up = np.append(up, table.dist)
+                    if up.size > count:
+                        up = np.delete(up, 0)
+                        table.dist = round(up.mean(), 3)
+                    else:
+                        nup += 1
+                        table.dist = 0
                 putText(img, str(table.dist), table.center, (255, 255, 0))
                 type_text = list(table.center)
                 type_text[0] -= 10
@@ -134,6 +163,7 @@ try:
             thresh = cv2.applyColorMap(cv2.convertScaleAbs(thresh), cv2.COLORMAP_BONE)
             images = np.hstack((img, thresh))
 
+            putText(images, f"{str(count-nud)}, {str(count-nmd)}, {str(count-nup)}", (10, 40), (255, 255, 255))
             cv2.imshow("image", images)
 
             k = cv2.waitKey(1)
