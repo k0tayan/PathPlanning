@@ -6,7 +6,8 @@ from bottleflip.objects import Robot, Field, Table, Path, Point
 from tcp.Tcp import Tcp
 
 random_move = True
-zone = 'blue'
+send = False
+zone = 'red'
 robot_width = 1200
 two_stage_table_red_zone_x, two_stage_table_red_zone_y = 3000, 3500
 two_stage_table_blue_zone_x, two_stage_table_blue_zone_y = 2000, 3500
@@ -59,9 +60,10 @@ def main(count=0):
         flip_points = path.get_flip_point()
         for i in range(8-len(send_points)):
             send_points.append(Point(0, 0))
-        tcp = Tcp()
-        tcp.connect()
-        tcp.send(send_points, flip_points)
+        if send:
+            tcp = Tcp()
+            tcp.connect()
+            tcp.send(send_points, flip_points)
     except Exception as error:
         print(error)
     points_x = [point.x for point in points]
