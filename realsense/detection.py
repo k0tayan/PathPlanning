@@ -6,14 +6,15 @@ import os
 import json
 import cv2
 try:
-    from .rsd.Detection import Table, Utils
+    from .rsd.Detection import Table, Utils, Tables
 except:
-    from rsd.Detection import Table, Utils
+    from rsd.Detection import Table, Utils, Tables
 
 path = os.path.dirname(os.path.abspath(__file__))
 
 width = 640
 height = 480
+zone = 'red'
 # width = 1280
 # height = 720
 pipeline = rs.pipeline()
@@ -22,13 +23,8 @@ config.enable_stream(rs.stream.depth, width, height, rs.format.z16, 30)
 config.enable_stream(rs.stream.color, width, height, rs.format.bgr8,30)
 pipeline.start(config)
 lower_white = np.array([0, 0, 100])
-back_image = cv2.imread(path + '/field_background.png', 0)
-util = Utils()
-count = 300
-nud, nmd, nup = 0, 0, 0
-under = np.array([])
-middle = np.array([])
-up = np.array([])
+util = Utils(zone=zone)
+table_set = Tables()
 
 def putText(img, text, pos, color):
     cv2.putText(img, text, tuple(pos), cv2.FONT_HERSHEY_SIMPLEX, 1, color, 2, cv2.LINE_AA)
@@ -49,37 +45,43 @@ cv2.setTrackbarPos('kernel', 'image', util.settings['k'])
 try:
     while True:
         try:
+            #　深度と画像データを取得
+            frames = pipeline.wait_for_frames()
+            depth = frames.get_depth_frame()
+            color_frame = frames.get_color_frame()
+            color_image = np.asanyarray(color_frame.get_data())
+
+            # キーの入力待ち
+            k = cv2.waitKey(1)
+
+            # スライダーの値を取得
             h = cv2.getTrackbarPos('H', 'image')
             s = cv2.getTrackbarPos('S', 'image')
             v = cv2.getTrackbarPos('V', 'image')
             th = cv2.getTrackbarPos('threshold', 'image')
             kn = cv2.getTrackbarPos('kernel', 'image')
 
+            # スライダーの値から白色の上限値を指定
             upper_white = np.array([h, s, v])
 
-            frames = pipeline.wait_for_frames()
-            depth = frames.get_depth_frame()
-            color_frame = frames.get_color_frame()
-            color_image = np.asanyarray(color_frame.get_data())
+            # 画面に描画するようにcolor_imageをコピーした変数を作成
             # color_image = cv2.resize(color_image, (640, 360))
             color_image_copy = color_image
 
+            # ブラーをかける
             color_image = cv2.medianBlur(color_image, 5)
+            # hsv空間に変換
             hsv = cv2.cvtColor(color_image, cv2.COLOR_BGR2HSV)
+            # 白色でマスク
             mask_white = cv2.inRange(hsv, lower_white, upper_white)
+            # 同じ部分だけ抽出
             res_white = cv2.bitwise_and(color_image, color_image, mask=mask_white)
-
+            # グレースケールに変換
             gray = cv2.cvtColor(res_white, cv2.COLOR_RGB2GRAY)
+            # 二値化
             ret, thresh = cv2.threshold(gray, th, 255, cv2.THRESH_BINARY)
 
-            # 背景差分
-            """img_diff = cv2.absdiff(thresh, back_image)
-            img_diffm = cv2.threshold(img_diff, 20, 255, cv2.THRESH_BINARY)[1]
-            operator = np.ones((3, 3), np.uint8)
-            img_dilate = cv2.dilate(img_diffm, operator, iterations=4)
-            img_mask = cv2.erode(img_dilate, operator, iterations=4)
-            thresh = cv2.bitwise_and(thresh, img_mask)"""
-
+            # 縮小と膨張
             kernel = np.ones((kn, kn), np.uint8)
             erode = cv2.erode(thresh, kernel)
             thresh = cv2.dilate(erode, kernel)
@@ -95,7 +97,6 @@ try:
             # 輪郭抽出
             imgEdge, contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
-            img = color_image
 
             # 見つかった輪郭をリストに入れる
             tables = []
@@ -121,68 +122,54 @@ try:
             tables = tables[:3]
 
             # X座標が小さい順にソート
-            tables.sort(key=util.return_center, reverse=True)
+            tables.sort(key=util.return_center)
 
-            # 画面に描画
-            for i, table in enumerate(tables):
-                img = cv2.circle(color_image_copy, table.center, table.radius, (0, 255, 0), 2)
-                img = cv2.circle(color_image_copy, table.center, 3, (0, 255, 0), 2)
-                if table.center[0] < 268:
-                    table.type = 'under'
-                    under = np.append(under, table.dist)
-                    if under.size > count:
-                        under = np.delete(under, 0)
-                        table.dist = round(under.mean(), 3)
-                    else:
-                        nud += 1
-                        table.dist = 0
-                if 268 <= table.center[0] < 360:
-                    table.type = 'middle'
-                    middle = np.append(middle, table.dist)
-                    if middle.size > count:
-                        middle = np.delete(middle, 0)
-                        table.dist = round(middle.mean(), 3)
-                    else:
-                        nmd += 1
-                        table.dist = 0
-                if 360 <= table.center[0]:
-                    table.type = 'up'
-                    up = np.append(up, table.dist)
-                    if up.size > count:
-                        up = np.delete(up, 0)
-                        table.dist = round(up.mean(), 3)
-                    else:
-                        nup += 1
-                        table.dist = 0
-                putText(img, str(table.dist), table.center, (255, 255, 0))
-                type_text = list(table.center)
-                type_text[0] -= 10
-                type_text[1] -= 50
-                putText(img, str(table.type), type_text, (255, 51, 255))
+            if len(tables) == 3:
+                try:
+                    table_set.update(tables[0], tables[1], tables[2])
+
+                    # under tableを描画
+                    color_image_copy = cv2.circle(color_image_copy, table_set.under.center, table_set.under.radius, (0, 255, 0), 2)
+                    color_image_copy = cv2.circle(color_image_copy, table_set.under.center, 3, (0, 255, 0), 2)
+                    putText(color_image_copy, str(table_set.under.dist), table_set.under.center, (255, 255, 0))
+                    putText(color_image_copy, str(table_set.under.type), (lambda l:(l[0]-10, l[1]-50))(list(table_set.under.center)), (255, 51, 255))
+
+                    # middle tableを描画
+                    color_image_copy = cv2.circle(color_image_copy, table_set.middle.center, table_set.middle.radius, (0, 255, 0), 2)
+                    color_image_copy = cv2.circle(color_image_copy, table_set.middle.center, 3, (0, 255, 0), 2)
+                    putText(color_image_copy, str(table_set.middle.dist), table_set.middle.center, (255, 255, 0))
+                    putText(color_image_copy, str(table_set.middle.type), (lambda l:(l[0]-10, l[1]-50))(list(table_set.middle.center)), (255, 51, 255))
+
+                    # under tableを描画
+                    color_image_copy = cv2.circle(color_image_copy, table_set.up.center, table_set.up.radius, (0, 255, 0), 2)
+                    color_image_copy = cv2.circle(color_image_copy, table_set.up.center, 3, (0, 255, 0), 2)
+                    putText(color_image_copy, str(table_set.up.dist), table_set.up.center, (255, 255, 0))
+                    putText(color_image_copy, str(table_set.up.type), (lambda l:(l[0]-10, l[1]-50))(list(table_set.up.center)), (255, 51, 255))
+
+                    remaining_times = table_set.get_remaining_times()
+
+                    putText(color_image_copy, f"{str(remaining_times[0])}, {str(remaining_times[1])}, {str(remaining_times[2])}", (10, 40), (255, 255, 255))
+
+                    if k == ord('w'):  # パラメータの送信
+                        if table_set.is_available():
+                            ret = util.make_coordinate(tables)
+                            if ret:
+                                util.send_coordinate(ret)
+
+                except Exception as error:
+                    putText(color_image_copy, str(error), (10, 50), (255, 0, 0))
+                    print(error)
+            else:
+                putText(color_image_copy, 'Could not find 3 tables.', (10, 50), (255, 0, 0))
 
             thresh = cv2.applyColorMap(cv2.convertScaleAbs(thresh), cv2.COLORMAP_BONE)
-            images = np.hstack((img, thresh))
-
-            putText(images, f"{str(count-nud)}, {str(count-nmd)}, {str(count-nup)}", (10, 40), (255, 255, 255))
+            images = np.hstack((color_image_copy, thresh))
             cv2.imshow("image", images)
 
-            k = cv2.waitKey(1)
             if k == ord('q'):
                 break
-            if k == ord('w'):
-                if len(tables) == 3:
-                    ret = util.make_coordinate(tables)
-                    if ret:
-                        x1, x2, x3 = ret
-                        util.send_coordinate(x1, x2, x3)
-            if k == ord('s'):
-                util.settings['h'] = h
-                util.settings['s'] = s
-                util.settings['v'] = v
-                util.settings['th'] = th
-                util.settings['k'] = kn
-                util.save_file(util.settings)
-                cv2.imwrite(path + '/field_background.png', thresh)
+            if k == ord('s'): # パラメータの保存
+                util.save_param(h, s, v, th, kn)
 
         except Exception as error:
             print(error)
