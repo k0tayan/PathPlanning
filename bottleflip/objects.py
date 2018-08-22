@@ -42,7 +42,7 @@ class Rect:
 
 
 class Table(Rect, Point):
-    def __init__(self, x, y, width, robot_width):
+    def __init__(self, x, y, width, robot_width, ax):
         super().__init__(x, y, width)
         self.x = x
         self.y = y
@@ -50,11 +50,10 @@ class Table(Rect, Point):
         self.left_goal: Point = Point(x - width / 2 - robot_width/2, y)
         self.right_goal: Point = Point(x + width / 2 + robot_width/2, y)
         self.front_goal: Point = Point(x, y - width / 2 - robot_width/2)
-        self.ax = None
+        self.ax = ax
         self.goal: Point = None
         self.goal_state: str = None
 
-    def set_ax(self, ax):
         if isinstance(ax, matplotlib.axes._subplots.SubplotBase):
             self.ax = ax
         else:
@@ -86,12 +85,11 @@ class Table(Rect, Point):
 
 
 class Field:
-    def __init__(self, width, height):
+    def __init__(self, width, height, ax):
         self.width = width
         self.height = height
-        self.ax = None
+        self.ax = ax
 
-    def set_ax(self, ax):
         if isinstance(ax, matplotlib.axes._subplots.SubplotBase):
             self.ax = ax
         else:
