@@ -9,7 +9,6 @@ try:
 except:
     from Config import Config
 
-
 class Table(Config):
     def __init__(self, center, radius, dist):
         self.center = center
@@ -75,7 +74,7 @@ class Utils:
         self.zone = zone
         self.nothing = lambda x: x
         try:
-            f = open(self.path + '/../settings.json', 'r')
+            f = open(self.path + '/settings.json', 'r')
             self.settings = json.load(f)
         except:
             self.settings = {'h': 180, 's': 45, 'v': 255, 'th': 210, 'k': 10}
