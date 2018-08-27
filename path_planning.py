@@ -3,48 +3,48 @@ import matplotlib
 import matplotlib.pyplot as plt
 import random
 from bottleflip.objects import Robot, Field, Table, Path, Point
+from bottleflip import config
 from tcp.Tcp import Tcp
 import sys
 
-random_move = True
+random_move = False
 send = False
 zone = 'red'
-robot_width = 1200
-two_stage_table_red_zone_x, two_stage_table_red_zone_y = 3000, 3500
-two_stage_table_blue_zone_x, two_stage_table_blue_zone_y = 2000, 3500
-two_stage_table_width = 800
-move_table_width = 500
-field_width, field_height = 5000, 8500
-move_table_randomize_area_min, move_table_randomize_area_max = 1250, 3750
 
-def main():
+def main(arg):
     # plot setting
     plt.figure()
     ax = plt.axes()
     plt.axis("equal")
     plt.grid(True)
-    plt.xticks(list(range(0, field_width+1, 1000)))
-    plt.yticks(list(range(0, field_height+1, 1000)))
-    ax.set_xlim(0, field_width)
-    ax.set_ylim(0, field_height)
+    plt.xticks(list(range(0, config.field_width+1, 1000)))
+    plt.yticks(list(range(0, config.field_height+1, 1000)))
+    ax.set_xlim(0, config.field_width)
+    ax.set_ylim(0, config.field_height)
 
     # create instance
-    robot = Robot(robot_width)
-    field = Field(field_width, field_height, ax)
+    robot = Robot(config.robot_width)
+    field = Field(config.field_width, config.field_height, ax)
     if random_move:
-        table_under = Table(random.randint(move_table_randomize_area_min, move_table_randomize_area_max+1), 5500, move_table_width, robot_width, ax)
-        table_middle = Table(random.randint(move_table_randomize_area_min, move_table_randomize_area_max+1), 6500, move_table_width, robot_width, ax)
-        table_up = Table(random.randint(move_table_randomize_area_min, move_table_randomize_area_max+1), 7500, move_table_width, robot_width, ax)
+        table_under = Table(random.randint(config.move_table_randomize_area_min, config.move_table_randomize_area_max+1), 5500, config.move_table_width, config.robot_width, ax)
+        table_middle = Table(random.randint(config.move_table_randomize_area_min, config.move_table_randomize_area_max+1), 6500, config.move_table_width, config.robot_width, ax)
+        table_up = Table(random.randint(config.move_table_randomize_area_min, config.move_table_randomize_area_max+1), 7500, config.move_table_width, config.robot_width, ax)
         print(table_under.x, table_middle.x, table_up.x)
     else:
-        table_under = Table(2500, 5500, move_table_width, robot_width, ax)
-        table_middle = Table(2500, 6500, move_table_width, robot_width, ax)
-        table_up = Table(2500, 7500, move_table_width, robot_width, ax)
+        table_under = Table(arg[0], 5500, config.move_table_width, config.robot_width, ax)
+        table_middle = Table(arg[1], 6500, config.move_table_width, config.robot_width, ax)
+        table_up = Table(arg[2], 7500, config.move_table_width, config.robot_width, ax)
+        print(table_under.x, table_middle.x, table_up.x)
+        global zone
+        if arg[3] == 1:
+            zone = 'red'
+        else:
+            zone = 'blue'
     if zone == 'red':
-        two_stage_table = Table(two_stage_table_red_zone_x, two_stage_table_red_zone_y, two_stage_table_width, robot_width, ax)
+        two_stage_table = Table(config.two_stage_table_red_zone_x, config.two_stage_table_red_zone_y, config.two_stage_table_width, config.robot_width, ax)
         two_stage_table.set_goal('LEFT')
     else: # zone == 'blue
-        two_stage_table = Table(two_stage_table_blue_zone_x, two_stage_table_blue_zone_y, two_stage_table_width, robot_width, ax)
+        two_stage_table = Table(config.two_stage_table_blue_zone_x, config.two_stage_table_blue_zone_y, config.two_stage_table_width, config.robot_width, ax)
         two_stage_table.set_goal('RIGHT')
     path = Path(field=field,
                 robot=robot,
@@ -83,9 +83,12 @@ def main():
 
     ax.plot(points_x, points_y, '.', color='red')
     ax.plot(points_x, points_y, '-', color='green')
-    plt.show()
+    plt.savefig('output/tmp.png')
+    # plt.show()
 
 
 if __name__ == '__main__':
-    main()
+    if len(sys.argv) == 5 or random_move:
+        arg = list(map(int, sys.argv[1:]))
+        main(arg)
 
