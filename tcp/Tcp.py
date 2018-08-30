@@ -77,6 +77,7 @@ class Tcp:
         print("check_sum:{0}, sum:{1}".format(buf[0] & 0x7f, sum(buf[1:]) & 0x7f))
         p = struct.pack('B' * len(buf), *buf)
         self._socket.send(p)
+        self._socket.close()
 
     def server(self):
         self.serversock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
