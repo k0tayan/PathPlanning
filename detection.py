@@ -28,6 +28,9 @@ table_set = Tables()
 def putText(img, text, pos, color):
     cv2.putText(img, text, tuple(pos), cv2.FONT_HERSHEY_SIMPLEX, 1, color, 2, cv2.LINE_AA)
 
+def kinji(x):
+    return -0.049425348 * x * x * x * x + 0.78219095 * x * x * x  + -4.677005642 * x * x + 13.57915746 * x + -14.62887561
+
 
 window_name = 'image'
 cv2.namedWindow(window_name)
@@ -47,7 +50,7 @@ cv2.setTrackbarPos('kernel', window_name, util.settings['k'])
 try:
     while True:
         try:
-            # 　深度と画像データを取得
+            # 深度と画像データを取得
             frames = pipeline.wait_for_frames()
             depth = frames.get_depth_frame()
             color_frame = frames.get_color_frame()
@@ -67,7 +70,6 @@ try:
             upper_white = np.array([h, s, v])
 
             # 画面に描画するようにcolor_imageをコピーした変数を作成
-            # color_image = cv2.resize(color_image, (640, 360))
             color_image_copy = color_image
 
             # ブラーをかける
@@ -88,6 +90,13 @@ try:
             erode = cv2.erode(thresh, kernel)
             thresh = cv2.dilate(erode, kernel)
 
+            # 左を捨てる
+            thresh[:, :45] = 0
+
+            # 下を捨てる
+            thresh[429:, :] = 0
+
+
             # 各座標について遠すぎるやつは黒で埋める
             # for y in range(480):
             #    for x in range(640):
@@ -95,6 +104,7 @@ try:
             #        if 6.7 < dist:
             #            thresh[y][x] = 0
             # print(thresh)
+
 
             # 輪郭抽出
             imgEdge, contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
@@ -127,31 +137,48 @@ try:
 
             if len(tables) == 3:
                 try:
-                    table_set.update(tables[0], tables[1], tables[2])
+                    rtype = table_set.update(tables[0], tables[1], tables[2])
 
-                    # under tableを描画
-                    color_image_copy = cv2.circle(color_image_copy, table_set.under.center, table_set.under.radius,
-                                                  (0, 255, 0), 2)
-                    color_image_copy = cv2.circle(color_image_copy, table_set.under.center, 3, (0, 255, 0), 2)
-                    putText(color_image_copy, str(table_set.under.dist), table_set.under.center, (255, 255, 0))
-                    putText(color_image_copy, str(table_set.under.type),
-                            (lambda l: (l[0] - 10, l[1] - 50))(list(table_set.under.center)), (255, 51, 255))
+                    if not rtype & 0x01:
+                        # under tableを描画
+                        color_image_copy = cv2.circle(color_image_copy, table_set.under.center, table_set.under.radius,
+                                                      (0, 255, 0), 2)
+                        color_image_copy = cv2.circle(color_image_copy, table_set.under.center, 3, (0, 255, 0), 2)
+                        putText(color_image_copy, str(table_set.under.dist), table_set.under.center, (255, 255, 0))
+                        putText(color_image_copy, str(table_set.under.type),
+                                (lambda l: (l[0] - 10, l[1] - 50))(list(table_set.under.center)), (255, 51, 255))
 
-                    # middle tableを描画
-                    color_image_copy = cv2.circle(color_image_copy, table_set.middle.center, table_set.middle.radius,
-                                                  (0, 255, 0), 2)
-                    color_image_copy = cv2.circle(color_image_copy, table_set.middle.center, 3, (0, 255, 0), 2)
-                    putText(color_image_copy, str(table_set.middle.dist), table_set.middle.center, (255, 255, 0))
-                    putText(color_image_copy, str(table_set.middle.type),
-                            (lambda l: (l[0] - 10, l[1] - 50))(list(table_set.middle.center)), (255, 51, 255))
+                    if not rtype & 0x02:
+                        # middle tableを描画
+                        color_image_copy = cv2.circle(color_image_copy, table_set.middle.center, table_set.middle.radius,
+                                                      (0, 255, 0), 2)
+                        color_image_copy = cv2.circle(color_image_copy, table_set.middle.center, 3, (0, 255, 0), 2)
+                        putText(color_image_copy, str(table_set.middle.dist), table_set.middle.center, (255, 255, 0))
+                        putText(color_image_copy, str(table_set.middle.type),
+                                (lambda l: (l[0] - 10, l[1] - 50))(list(table_set.middle.center)), (255, 51, 255))
+                        if table_set.middle.dist != 0:
+                            test = round(1.014559073 * table_set.middle.dist - 1.868042848, 3)
+                            print(test)
 
-                    # under tableを描画
-                    color_image_copy = cv2.circle(color_image_copy, table_set.up.center, table_set.up.radius,
-                                                  (0, 255, 0), 2)
-                    color_image_copy = cv2.circle(color_image_copy, table_set.up.center, 3, (0, 255, 0), 2)
-                    putText(color_image_copy, str(table_set.up.dist), table_set.up.center, (255, 255, 0))
-                    putText(color_image_copy, str(table_set.up.type),
-                            (lambda l: (l[0] - 10, l[1] - 50))(list(table_set.up.center)), (255, 51, 255))
+                    if not rtype & 0x04:
+                        # under tableを描画
+                        color_image_copy = cv2.circle(color_image_copy, table_set.up.center, table_set.up.radius,
+                                                      (0, 255, 0), 2)
+                        color_image_copy = cv2.circle(color_image_copy, table_set.up.center, 3, (0, 255, 0), 2)
+                        putText(color_image_copy, str(table_set.up.dist), table_set.up.center, (255, 255, 0))
+                        putText(color_image_copy, str(table_set.up.type),
+                                (lambda l: (l[0] - 10, l[1] - 50))(list(table_set.up.center)), (255, 51, 255))
+
+                    if rtype != 0:
+                        msg = 'Error:'
+                        if rtype & 0x01:
+                            msg += ' under'
+                        if rtype & 0x02:
+                            msg += ' middle'
+                        if rtype & 0x04:
+                            msg += ' up'
+                        putText(color_image_copy, msg, (300, 446), (255, 75, 0))
+                        # color_image_copy = util.puttext(color_image_copy, msg, (100, 50), path+'/assets/Koruri-Regular.ttf', 3, (0, 0, 0))
 
                     remaining_times = table_set.get_remaining_times()
 
@@ -166,10 +193,10 @@ try:
                                 util.send_coordinate(ret)
 
                 except Exception as error:
-                    putText(color_image_copy, str(error), (10, 50), (255, 0, 0))
                     print(error)
             else:
-                putText(color_image_copy, 'Could not find 3 tables.', (10, 50), (255, 0, 0))
+                putText(color_image_copy, 'Could not find 3 tables.' + str(len(tables)), (10, 50), (255, 0, 0))
+
 
             thresh = cv2.applyColorMap(cv2.convertScaleAbs(thresh), cv2.COLORMAP_BONE)
             images = np.hstack((color_image_copy, thresh))
