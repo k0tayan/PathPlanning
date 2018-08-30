@@ -6,9 +6,11 @@ from bottleflip.objects import Robot, Field, Table, Path, Point
 from bottleflip import config
 from tcp.Tcp import Tcp
 import sys
+import socket
+import struct
 
 random_move = False
-send = False
+send = True
 zone = 'red'
 
 def main(arg):
@@ -62,11 +64,22 @@ def main(arg):
         for i in range(8-len(send_points)):
             send_points.append(Point(0, 0))
         if send:
-            tcp = Tcp()
+            tcp = Tcp(host='192.168.11.13', port=10001)
             tcp.connect()
             tcp.send(send_points, flip_points)
+
+            status_led = socket.socket()
+            status_led.connect(('192.168.11.14', 10001))
+            buf = [0x01]
+            packet = struct.pack('B', *buf)
+            status_led.send(packet)
     except Exception as error:
         print(error)
+        status_led = socket.socket()
+        status_led.connect(('192.168.11.14', 10001))
+        buf = [0x02]
+        packet = struct.pack('B', *buf)
+        status_led.send(packet)
     points_x = [point.x for point in points]
     points_y = [point.y for point in points]
     tmp = [(point.x, point.y) for point in send_points]
@@ -91,4 +104,7 @@ if __name__ == '__main__':
     if len(sys.argv) == 5 or random_move:
         arg = list(map(int, sys.argv[1:]))
         main(arg)
+    else:
+        random_move = True
+        main(sys.argv)
 
