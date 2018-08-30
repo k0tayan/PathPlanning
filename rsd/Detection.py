@@ -24,6 +24,7 @@ class Tables(Config):
         self.up_dist = np.array([])
 
     def update(self, under: Table, middle: Table, up: Table):
+        rtype = 0
         if under.center[0] < self.partition_1:
             self.under = under
             self.under.type = 'under'
@@ -35,7 +36,8 @@ class Tables(Config):
                 self.nud += 1
                 self.under.dist = 0
         else:
-            raise Exception('Under table was found, but the coordinates are inappropriate.')
+            # raise Exception('Under table was found, but the coordinates are inappropriate.')
+            rtype += 0x01
         if self.partition_1 <= middle.center[0] <= self.partition_2:
             self.middle = middle
             self.middle.type = 'middle'
@@ -47,7 +49,8 @@ class Tables(Config):
                 self.nmd += 1
                 self.middle.dist = 0
         else:
-            raise Exception('Middle table was found, but the coordinates are inappropriate.')
+            rtype += 0x02
+            # raise Exception('Middle table was found, but the coordinates are inappropriate.')
         if self.partition_2 < up.center[0]:
             self.up = up
             self.up.type = 'up'
@@ -57,9 +60,11 @@ class Tables(Config):
                 self.up.dist = round(self.up_dist.mean(), 3)
             else:
                 self.nup += 1
-                self.under.dist = 0
+                self.up.dist = 0
         else:
-            raise Exception('Up table was found, but the coordinates are inappropriate.')
+            rtype += 0x04
+            # raise Exception('Up table was found, but the coordinates are inappropriate.')
+        return rtype
 
     def get_remaining_times(self):
         return self.count-self.nud, self.count-self.nmd, self.count-self.nup
@@ -74,7 +79,7 @@ class Utils:
         self.zone = zone
         self.nothing = lambda x: x
         try:
-            f = open(self.path + '/settings.json', 'r')
+            f = open(self.path + '/../settings.json', 'r')
             self.settings = json.load(f)
         except:
             self.settings = {'h': 180, 's': 45, 'v': 255, 'th': 210, 'k': 10}
@@ -93,10 +98,10 @@ class Utils:
         return a.radius
 
     def radius_filter(self, a):
-        return 200 > a.radius > 1
+        return 200 > a.radius > 20
 
     def distance_filter(self, a):
-        return 0.5 < a.dist < 6.5
+        return 2 < a.dist < 6.5
 
     def make_coordinate(self, tables):
         _x1 = int(tables.under.dist * 1000)
