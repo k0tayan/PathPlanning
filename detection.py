@@ -6,13 +6,17 @@ import cv2
 try:
     from rsd.Detection import Table, Utils, Tables
 except:
-    from rsd.Detection import Table, Utils, Tables
+    from .rsd.Detection import Table, Utils, Tables
+from rsd.Config import Config
+
 
 path = os.path.dirname(os.path.abspath(__file__))
 
 width = 640
 height = 480
 zone = 'red'
+only_view = True
+mode = Config.mode
 # width = 1280
 # height = 720
 pipeline = rs.pipeline()
@@ -20,13 +24,12 @@ config = rs.config()
 config.enable_stream(rs.stream.depth, width, height, rs.format.z16, 30)
 config.enable_stream(rs.stream.color, width, height, rs.format.bgr8, 30)
 pipeline.start(config)
-lower_white = np.array([0, 0, 100])
 util = Utils(zone=zone)
 table_set = Tables()
 
 
 def putText(img, text, pos, color):
-    cv2.putText(img, text, tuple(pos), cv2.FONT_HERSHEY_SIMPLEX, 1, color, 2, cv2.LINE_AA)
+    cv2.putText(img, text, tuple(pos), cv2.FONT_HERSHEY_SIMPLEX, 1, color, 1, cv2.LINE_AA)
 
 def kinji(x):
     return -0.049425348 * x * x * x * x + 0.78219095 * x * x * x  + -4.677005642 * x * x + 13.57915746 * x + -14.62887561
@@ -38,12 +41,14 @@ cv2.moveWindow(window_name, 0, 0)
 cv2.createTrackbar('H', window_name, 0, 255, util.nothing)
 cv2.createTrackbar('S', window_name, 0, 255, util.nothing)
 cv2.createTrackbar('V', window_name, 0, 255, util.nothing)
+cv2.createTrackbar('LV', window_name, 0, 255, util.nothing)
 cv2.createTrackbar('threshold', window_name, 0, 255, util.nothing)
 cv2.createTrackbar('kernel', window_name, 0, 30, util.nothing)
 
 cv2.setTrackbarPos('H', window_name, util.settings['h'])
 cv2.setTrackbarPos('S', window_name, util.settings['s'])
 cv2.setTrackbarPos('V', window_name, util.settings['v'])
+cv2.setTrackbarPos('LV', window_name, util.settings['lv'])
 cv2.setTrackbarPos('threshold', window_name, util.settings['th'])
 cv2.setTrackbarPos('kernel', window_name, util.settings['k'])
 
@@ -63,11 +68,13 @@ try:
             h = cv2.getTrackbarPos('H', window_name)
             s = cv2.getTrackbarPos('S', window_name)
             v = cv2.getTrackbarPos('V', window_name)
+            lv = cv2.getTrackbarPos('LV', window_name)
             th = cv2.getTrackbarPos('threshold', window_name)
             kn = cv2.getTrackbarPos('kernel', window_name)
 
-            # スライダーの値から白色の上限値を指定
+            # スライダーの値から白色の上限値、下限値を指定
             upper_white = np.array([h, s, v])
+            lower_white = np.array([0, 0, lv])
 
             # 画面に描画するようにcolor_imageをコピーした変数を作成
             color_image_copy = color_image
@@ -109,13 +116,17 @@ try:
             # 輪郭抽出
             imgEdge, contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
-            # 見つかった輪郭をリストに入れる
+            # 見つかった輪郭をリストに入れ、とりあえず描画
             tables = []
             contours.sort(key=cv2.contourArea, reverse=True)
             for cnt in contours:
                 (x, y), radius = cv2.minEnclosingCircle(cnt)
                 center = (int(x), int(y))
                 radius = int(radius)
+                color_image_copy = cv2.circle(color_image_copy, center, radius,
+                                              (140, 15, 0), 1)
+                putText(color_image_copy, str(radius),
+                        (lambda l: (l[0] + 50, l[1]))(list(center)), (255, 255, 0))
                 dist = depth.get_distance(int(x), int(y))
                 table = Table(center, radius, dist)
                 tables.append(table)
@@ -135,7 +146,7 @@ try:
             # X座標が小さい順にソート
             tables.sort(key=util.return_center)
 
-            if len(tables) == 3:
+            if len(tables) == 3 and not only_view:
                 try:
                     rtype = table_set.update(tables[0], tables[1], tables[2])
 
@@ -156,18 +167,17 @@ try:
                         putText(color_image_copy, str(table_set.middle.dist), table_set.middle.center, (255, 255, 0))
                         putText(color_image_copy, str(table_set.middle.type),
                                 (lambda l: (l[0] - 10, l[1] - 50))(list(table_set.middle.center)), (255, 51, 255))
-                        if table_set.middle.dist != 0:
-                            test = round(1.014559073 * table_set.middle.dist - 1.868042848, 3)
-                            print(test)
 
                     if not rtype & 0x04:
-                        # under tableを描画
+                        # up tableを描画
                         color_image_copy = cv2.circle(color_image_copy, table_set.up.center, table_set.up.radius,
                                                       (0, 255, 0), 2)
                         color_image_copy = cv2.circle(color_image_copy, table_set.up.center, 3, (0, 255, 0), 2)
                         putText(color_image_copy, str(table_set.up.dist), table_set.up.center, (255, 255, 0))
                         putText(color_image_copy, str(table_set.up.type),
                                 (lambda l: (l[0] - 10, l[1] - 50))(list(table_set.up.center)), (255, 51, 255))
+                        putText(color_image_copy, str(table_set.up.center),
+                                (lambda l: (l[0] + 50, l[1] - 50))(list(table_set.up.center)), (255, 255, 0))
 
                     if rtype != 0:
                         msg = 'Error:'
@@ -186,16 +196,16 @@ try:
                             f"{str(remaining_times[0])}, {str(remaining_times[1])}, {str(remaining_times[2])}",
                             (10, 40), (255, 255, 255))
 
-                    if k == ord('w'):  # パラメータの送信
-                        if table_set.is_available():
-                            ret = util.make_coordinate(tables)
-                            if ret:
-                                util.send_coordinate(ret)
-
                 except Exception as error:
                     print(error)
-            else:
-                putText(color_image_copy, 'Could not find 3 tables.' + str(len(tables)), (10, 50), (255, 0, 0))
+
+            if only_view:
+                for _table in tables:
+                    color_image_copy = cv2.circle(color_image_copy, _table.center, _table.radius,
+                                                  (0, 255, 0), 2)
+                    putText(color_image_copy, str(_table.center), (lambda l: (l[0], l[1] + 50))(list(_table.center)), (255,51,255))
+
+
 
 
             thresh = cv2.applyColorMap(cv2.convertScaleAbs(thresh), cv2.COLORMAP_BONE)
@@ -205,7 +215,7 @@ try:
             if k == ord('q'):
                 break
             if k == ord('s'):  # パラメータの保存
-                util.save_param(h, s, v, th, kn)
+                util.save_param(h, s, v, lv, th, kn)
             if k == ord('l'):
                 os.system(f'./path_planning.sh {3500} {2500} {1500} {0}')
                 view_window_name = 'view'
