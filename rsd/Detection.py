@@ -1,5 +1,3 @@
-import socket
-import struct
 import os
 import json
 import numpy as np
@@ -19,51 +17,93 @@ class Table(Config):
 
 class Tables(Config):
     def __init__(self):
-        self.under_dist = np.array([])
-        self.middle_dist = np.array([])
-        self.up_dist = np.array([])
+        # 深度用
+        self.under_dist = []
+        self.middle_dist = []
+        self.up_dist = []
+
+        # 中心座標用
+        self.under_center = []
+        self.middle_center = []
+        self.up_center = []
+
+    def __round(self, n):
+        return round(n, 3)
 
     def update(self, under: Table, middle: Table, up: Table):
+        # mode=0: 深度
+        # mode=1: 中心座標
         rtype = 0
         if under.center[0] < self.partition_1:
             self.under = under
             self.under.type = 'under'
-            self.under_dist = np.append(self.under_dist, self.under.dist)
-            if self.under_dist.size > self.count:
-                self.under_dist = np.delete(self.under_dist, 0)
-                self.under.dist = round(self.under_dist.mean(), 3)
-            else:
-                self.nud += 1
-                self.under.dist = 0
+            if self.mode: # 中心座標
+                self.under_center.append(self.under.center)
+                if len(self.under_center) > self.count:
+                    self.under_center.pop(0)
+                    center = np.mean(self.under_center, axis=0)
+                    self.under.dist = self.make_distance_under(center)
+                else:
+                    self.nud += 1
+                    self.under.dist = 0
+            else: # 深度
+                self.under_dist.append(self.__round(self.under.dist))
+                if len(self.under_dist) > self.count:
+                    self.under_dist.pop(0)
+                    self.under.dist = self.__round(np.mean(self.under_dist))
+                    # self.under.dist = self.make_distance_under(self.__round(self.under_dist.mean()))
+                else:
+                    self.nud += 1
+                    self.under.dist = 0
         else:
-            # raise Exception('Under table was found, but the coordinates are inappropriate.')
             rtype += 0x01
         if self.partition_1 <= middle.center[0] <= self.partition_2:
             self.middle = middle
             self.middle.type = 'middle'
-            self.middle_dist = np.append(self.middle_dist, self.middle.dist)
-            if self.middle_dist.size > self.count:
-                self.middle_dist = np.delete(self.middle_dist, 0)
-                self.middle.dist = round(self.middle_dist.mean(), 3)
-            else:
-                self.nmd += 1
-                self.middle.dist = 0
+            if self.mode: # 中心座標
+                self.middle_center.append(self.middle.center)
+                if len(self.middle_center) > self.count:
+                    self.middle_center.pop(0)
+                    center = np.mean(self.middle_center, axis=0)
+                    self.middle.dist = self.make_distance_middle(center)
+                else:
+                    self.nmd += 1
+                    self.middle.dist = 0
+
+            else: # 深度
+                self.middle_dist.append(self.__round(self.middle.dist))
+                if len(self.middle_dist) > self.count:
+                    self.middle_dist.pop(0)
+                    self.middle.dist = self.__round(np.mean(self.middle_dist))
+                    # self.middle.dist = self.make_distance_middle(self.__round(self.middle_dist.mean()))
+                else:
+                    self.nmd += 1
+                    self.middle.dist = 0
         else:
             rtype += 0x02
-            # raise Exception('Middle table was found, but the coordinates are inappropriate.')
         if self.partition_2 < up.center[0]:
             self.up = up
             self.up.type = 'up'
-            self.up_dist = np.append(self.up_dist, self.up.dist)
-            if self.up_dist.size > self.count:
-                self.up_dist = np.delete(self.up_dist, 0)
-                self.up.dist = round(self.up_dist.mean(), 3)
+            if self.mode: # 中心座標
+                self.up_center.append(self.up.center)
+                if len(self.up_center) > self.count:
+                    self.up_center.pop(0)
+                    center = np.mean(self.up_center, axis=0)
+                    self.up.dist = self.make_distance_up(center)
+                else:
+                    self.nup += 1
+                    self.up.dist = 0
             else:
-                self.nup += 1
-                self.up.dist = 0
+                self.up_dist.append(self.__round(self.up.dist))
+                if len(self.up_dist) > self.count:
+                    self.up_dist.pop(0)
+                    self.up.dist = self.__round(np.mean(self.up_dist))
+                    # self.up.dist = self.make_distance_up(self.__round(self.up_dist.mean()))
+                else:
+                    self.nup += 1
+                    self.up.dist = 0
         else:
             rtype += 0x04
-            # raise Exception('Up table was found, but the coordinates are inappropriate.')
         return rtype
 
     def get_remaining_times(self):
@@ -72,24 +112,36 @@ class Tables(Config):
     def is_available(self):
         return (self.count - self.nud + self.count - self.nmd + self.count - self.nup) == 0
 
+    def make_distance_under(self, distanceOrCenter):
+        if self.mode:
+            return 0
+        else:
+            return 0
 
-class Utils:
+    def make_distance_middle(self, distanceOrCenter):
+        if self.mode:
+            return 0
+        else:
+            return 0
+
+    def make_distance_up(self, distanceOrCenter):
+        if self.mode:
+            return 0
+        else:
+            return 0
+
+
+
+class Utils(Config):
     def __init__(self, zone):
         self.path = os.path.dirname(os.path.abspath(__file__))
         self.zone = zone
         self.nothing = lambda x: x
         try:
-            f = open(self.path + '/../settings.json', 'r')
+            f = open(self.path + self.setting_path, 'r')
             self.settings = json.load(f)
         except:
             self.settings = {'h': 180, 's': 45, 'v': 255, 'th': 210, 'k': 10}
-        try:
-            self.cl = socket.socket()
-            self.cl.connect(('localhost', 4000))
-            self.is_tcp_available = True
-        except:
-            print('Cant connect to path_planning')
-            self.is_tcp_available = False
 
     def return_center(self, a):
         return a.center[0]
@@ -98,32 +150,23 @@ class Utils:
         return a.radius
 
     def radius_filter(self, a):
-        return 200 > a.radius > 20
+        return 100 > a.radius > 20
 
     def distance_filter(self, a):
         return 2 < a.dist < 6.5
 
-    def make_coordinate(self, tables):
+    def make_distance_send(self, tables):
         _x1 = int(tables.under.dist * 1000)
         _x2 = int(tables.middle.dist * 1000)
         _x3 = int(tables.up.dist * 1000)
         return _x1, _x2, _x3
 
-    def send_coordinate(self, dists):
-        if self.is_tcp_available:
-            packet = dists
-            if self.zone == 'red':
-                packet.append(1)
-            else:
-                packet.append(0)
-            b = struct.pack("iii?", *packet)
-            self.cl.send(b)
-
-    def save_param(self, h, s, v, th, kn):
+    def save_param(self, h, s, v, lv, th, kn):
         self.settings['h'] = h
         self.settings['s'] = s
         self.settings['v'] = v
+        self.settings['lv'] = lv
         self.settings['th'] = th
         self.settings['k'] = kn
-        f = open(self.path + '/../settings.json', 'w')
+        f = open(self.path + self.setting_path, 'w')
         json.dump(self.settings, f)
