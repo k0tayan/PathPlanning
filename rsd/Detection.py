@@ -3,9 +3,27 @@ import json
 import numpy as np
 
 try:
-    from .Config import Config
+    from .Config import Config, Path
 except:
-    from Config import Config
+    from Config import Config, Path
+
+
+class ApproximationFunction(Path):
+    def __init__(self):
+        # 青ゾーン中央
+        data = np.loadtxt(self.blue_middle, delimiter=',')
+        self.blue_middle_res = np.polyfit(data[:, 1], data[:, 0], 4)
+
+        # 青ゾーン上
+        data = np.loadtxt(self.blue_up, delimiter=',')
+        self.blue_up_res = np.polyfit(data[:, 1], data[:, 0], 3)
+
+    def make_distance_middle_blue_zone_by_center(self, x):
+        return np.poly1d(self.blue_middle_res)(x)
+
+    def make_distance_up_blue_zone_by_center(self, x):
+        return np.poly1d(self.blue_up_res)(x)
+
 
 class Table(Config):
     def __init__(self, center, radius, dist):
@@ -15,8 +33,9 @@ class Table(Config):
         self.type = ''
 
 
-class Tables(Config):
+class Tables(Config, ApproximationFunction):
     def __init__(self):
+        super().__init__()
         # 深度用
         self.under_dist = []
         self.middle_dist = []
@@ -33,19 +52,22 @@ class Tables(Config):
     def update(self, under: Table, middle: Table, up: Table):
         # mode=0: 深度
         # mode=1: 中心座標
-        rtype = 0
-        if under.center[0] < self.partition_1:
+        rtype = 0 # 戻り値に使うやつ　成功したかどうかを入れる
+        if under.center[0] < self.partition_1: # 一番下のテーブル
             self.under = under
             self.under.type = 'under'
             if self.mode: # 中心座標
-                self.under_center.append(self.under.center)
-                if len(self.under_center) > self.count:
-                    self.under_center.pop(0)
-                    center = np.mean(self.under_center, axis=0)
-                    self.under.dist = self.make_distance_under(center)
+                if self.use_moving_average:
+                    self.under_center.append(self.under.center)
+                    if len(self.under_center) > self.count:
+                        self.under_center.pop(0)
+                        center = np.mean(self.under_center, axis=0)
+                        self.under.dist = self.__round(self.make_distance_under(center))
+                    else:
+                        self.nud += 1
+                        self.under.dist = 0
                 else:
-                    self.nud += 1
-                    self.under.dist = 0
+                    self.under.dist = self.__round(self.make_distance_under(self.under.center))
             else: # 深度
                 self.under_dist.append(self.__round(self.under.dist))
                 if len(self.under_dist) > self.count:
@@ -57,18 +79,22 @@ class Tables(Config):
                     self.under.dist = 0
         else:
             rtype += 0x01
-        if self.partition_1 <= middle.center[0] <= self.partition_2:
+
+        if self.partition_1 <= middle.center[0] <= self.partition_2: # 真ん中のテーブル
             self.middle = middle
             self.middle.type = 'middle'
             if self.mode: # 中心座標
-                self.middle_center.append(self.middle.center)
-                if len(self.middle_center) > self.count:
-                    self.middle_center.pop(0)
-                    center = np.mean(self.middle_center, axis=0)
-                    self.middle.dist = self.make_distance_middle(center)
+                if self.use_moving_average:
+                    self.middle_center.append(self.middle.center)
+                    if len(self.middle_center) > self.count:
+                        self.middle_center.pop(0)
+                        center = np.mean(self.middle_center, axis=0)
+                        self.middle.dist = self.__round(self.make_distance_middle(center))
+                    else:
+                        self.nmd += 1
+                        self.middle.dist = 0
                 else:
-                    self.nmd += 1
-                    self.middle.dist = 0
+                    self.middle.dist = self.__round(self.make_distance_middle(self.middle.center))
 
             else: # 深度
                 self.middle_dist.append(self.__round(self.middle.dist))
@@ -81,18 +107,22 @@ class Tables(Config):
                     self.middle.dist = 0
         else:
             rtype += 0x02
-        if self.partition_2 < up.center[0]:
+
+        if self.partition_2 < up.center[0]: # 一番上のテーブル
             self.up = up
             self.up.type = 'up'
             if self.mode: # 中心座標
-                self.up_center.append(self.up.center)
-                if len(self.up_center) > self.count:
-                    self.up_center.pop(0)
-                    center = np.mean(self.up_center, axis=0)
-                    self.up.dist = self.make_distance_up(center)
+                if self.use_moving_average:
+                    self.up_center.append(self.up.center)
+                    if len(self.up_center) > self.count:
+                        self.up_center.pop(0)
+                        center = np.mean(self.up_center, axis=0)
+                        self.up.dist = self.__round(self.make_distance_up(center))
+                    else:
+                        self.nup += 1
+                        self.up.dist = 0
                 else:
-                    self.nup += 1
-                    self.up.dist = 0
+                    self.up.dist = self.__round(self.make_distance_up(self.up.center))
             else:
                 self.up_dist.append(self.__round(self.up.dist))
                 if len(self.up_dist) > self.count:
@@ -120,13 +150,21 @@ class Tables(Config):
 
     def make_distance_middle(self, distanceOrCenter):
         if self.mode:
-            return 0
+            y = distanceOrCenter[1]
+            if self.zone: # 赤ゾーン
+                return 0
+            else: #青ゾーン
+                return self.make_distance_middle_blue_zone_by_center(y)
         else:
             return 0
 
     def make_distance_up(self, distanceOrCenter):
         if self.mode:
-            return 0
+            y = distanceOrCenter[1]
+            if self.zone:
+                return 0
+            else:
+                return self.make_distance_up_blue_zone_by_center(y)
         else:
             return 0
 
