@@ -4,7 +4,7 @@ import os
 import cv2
 
 try:
-    from rsd.Detection import Table, Utils, Tables
+    from rsd.Detection import Table, Utils, Tables, ApproximationFunction
 except:
     from .rsd.Detection import Table, Utils, Tables
 from rsd.Config import Config
@@ -14,11 +14,9 @@ path = os.path.dirname(os.path.abspath(__file__))
 
 width = 640
 height = 480
-zone = 'red'
-only_view = True
+zone = Config.zone
+only_view = False
 mode = Config.mode
-# width = 1280
-# height = 720
 pipeline = rs.pipeline()
 config = rs.config()
 config.enable_stream(rs.stream.depth, width, height, rs.format.z16, 30)
@@ -26,14 +24,11 @@ config.enable_stream(rs.stream.color, width, height, rs.format.bgr8, 30)
 pipeline.start(config)
 util = Utils(zone=zone)
 table_set = Tables()
+func = ApproximationFunction()
 
 
 def putText(img, text, pos, color):
     cv2.putText(img, text, tuple(pos), cv2.FONT_HERSHEY_SIMPLEX, 1, color, 1, cv2.LINE_AA)
-
-def kinji(x):
-    return -0.049425348 * x * x * x * x + 0.78219095 * x * x * x  + -4.677005642 * x * x + 13.57915746 * x + -14.62887561
-
 
 window_name = 'image'
 cv2.namedWindow(window_name)
@@ -97,11 +92,14 @@ try:
             erode = cv2.erode(thresh, kernel)
             thresh = cv2.dilate(erode, kernel)
 
-            # 左を捨てる
-            thresh[:, :45] = 0
+            if zone:
+                pass
+            else:
+                # 左を捨てる
+                thresh[:, :45] = 0
 
-            # 下を捨てる
-            thresh[429:, :] = 0
+                # 下を捨てる
+                thresh[429:, :] = 0
 
 
             # 各座標について遠すぎるやつは黒で埋める
@@ -125,8 +123,8 @@ try:
                 radius = int(radius)
                 color_image_copy = cv2.circle(color_image_copy, center, radius,
                                               (140, 15, 0), 1)
-                putText(color_image_copy, str(radius),
-                        (lambda l: (l[0] + 50, l[1]))(list(center)), (255, 255, 0))
+                # putText(color_image_copy, str(radius),
+                #         (lambda l: (l[0] + 50, l[1]))(list(center)), (255, 255, 0))
                 dist = depth.get_distance(int(x), int(y))
                 table = Table(center, radius, dist)
                 tables.append(table)
@@ -190,11 +188,12 @@ try:
                         putText(color_image_copy, msg, (300, 446), (255, 75, 0))
                         # color_image_copy = util.puttext(color_image_copy, msg, (100, 50), path+'/assets/Koruri-Regular.ttf', 3, (0, 0, 0))
 
-                    remaining_times = table_set.get_remaining_times()
+                    if not Config.mode:
+                        remaining_times = table_set.get_remaining_times()
 
-                    putText(color_image_copy,
-                            f"{str(remaining_times[0])}, {str(remaining_times[1])}, {str(remaining_times[2])}",
-                            (10, 40), (255, 255, 255))
+                        putText(color_image_copy,
+                                f"{str(remaining_times[0])}, {str(remaining_times[1])}, {str(remaining_times[2])}",
+                                (10, 40), (255, 255, 255))
 
                 except Exception as error:
                     print(error)
@@ -203,7 +202,11 @@ try:
                 for _table in tables:
                     color_image_copy = cv2.circle(color_image_copy, _table.center, _table.radius,
                                                   (0, 255, 0), 2)
-                    putText(color_image_copy, str(_table.center), (lambda l: (l[0], l[1] + 50))(list(_table.center)), (255,51,255))
+                    putText(color_image_copy, str(_table.center), (lambda l: (l[0] - 100, l[1] + 50))(list(_table.center)), (255,51,255))
+                    # putText(color_image_copy,
+                    #         str(func.make_distance_up_blue_zone_by_center(_table.center[1])),
+                    #         (lambda l: (l[0] - 100, l[1] + 100))(list(_table.center)),
+                    #         (255,51,255))
 
 
 
@@ -223,7 +226,9 @@ try:
                 cv2.namedWindow(view_window_name)
                 cv2.imshow(view_window_name, view)
         except Exception as error:
-            print(error)
+            if str(error) == "wait_for_frames cannot be called before start()":
+                pipeline.stop()
+                exit()
 except:
     pass
 finally:
