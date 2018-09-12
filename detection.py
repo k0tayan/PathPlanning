@@ -9,7 +9,6 @@ except:
     from .rsd.Detection import Table, Utils, Tables
 from rsd.Config import Config
 
-
 path = os.path.dirname(os.path.abspath(__file__))
 
 width = 640
@@ -25,10 +24,6 @@ pipeline.start(config)
 util = Utils(zone=zone)
 table_set = Tables()
 func = ApproximationFunction()
-
-
-def putText(img, text, pos, color):
-    cv2.putText(img, text, tuple(pos), cv2.FONT_HERSHEY_SIMPLEX, 1, color, 1, cv2.LINE_AA)
 
 window_name = 'image'
 cv2.namedWindow(window_name)
@@ -74,6 +69,9 @@ try:
             # 画面に描画するようにcolor_imageをコピーした変数を作成
             color_image_copy = color_image
 
+            print(color_image_copy.shape)
+            blend = np.zeros((480, 640, 3))
+
             # ブラーをかける
             color_image = cv2.medianBlur(color_image, 5)
             # hsv空間に変換
@@ -92,6 +90,8 @@ try:
             erode = cv2.erode(thresh, kernel)
             thresh = cv2.dilate(erode, kernel)
 
+            # thresh = cv2.fastNlMeansDenoising(thresh, None, 10, 10, 7,)
+
             if zone:
                 pass
             else:
@@ -101,7 +101,6 @@ try:
                 # 下を捨てる
                 thresh[429:, :] = 0
 
-
             # 各座標について遠すぎるやつは黒で埋める
             # for y in range(480):
             #    for x in range(640):
@@ -110,21 +109,16 @@ try:
             #            thresh[y][x] = 0
             # print(thresh)
 
-
             # 輪郭抽出
             imgEdge, contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
-            # 見つかった輪郭をリストに入れ、とりあえず描画
+            # 見つかった輪郭をリストに入れる
             tables = []
             contours.sort(key=cv2.contourArea, reverse=True)
             for cnt in contours:
                 (x, y), radius = cv2.minEnclosingCircle(cnt)
                 center = (int(x), int(y))
                 radius = int(radius)
-                color_image_copy = cv2.circle(color_image_copy, center, radius,
-                                              (140, 15, 0), 1)
-                # putText(color_image_copy, str(radius),
-                #         (lambda l: (l[0] + 50, l[1]))(list(center)), (255, 255, 0))
                 dist = depth.get_distance(int(x), int(y))
                 table = Table(center, radius, dist)
                 tables.append(table)
@@ -150,32 +144,26 @@ try:
 
                     if not rtype & 0x01:
                         # under tableを描画
-                        color_image_copy = cv2.circle(color_image_copy, table_set.under.center, table_set.under.radius,
-                                                      (0, 255, 0), 2)
-                        color_image_copy = cv2.circle(color_image_copy, table_set.under.center, 3, (0, 255, 0), 2)
-                        putText(color_image_copy, str(table_set.under.dist), table_set.under.center, (255, 255, 0))
-                        putText(color_image_copy, str(table_set.under.type),
-                                (lambda l: (l[0] - 10, l[1] - 50))(list(table_set.under.center)), (255, 51, 255))
+                        color_image_copy = util.rectangle(color_image_copy, table_set.under.center,
+                                                          table_set.under.radius)
+                        color_image_copy = util.type_name(color_image_copy, table_set.under.center, table_set.under.type)
 
                     if not rtype & 0x02:
                         # middle tableを描画
-                        color_image_copy = cv2.circle(color_image_copy, table_set.middle.center, table_set.middle.radius,
-                                                      (0, 255, 0), 2)
-                        color_image_copy = cv2.circle(color_image_copy, table_set.middle.center, 3, (0, 255, 0), 2)
-                        putText(color_image_copy, str(table_set.middle.dist), table_set.middle.center, (255, 255, 0))
-                        putText(color_image_copy, str(table_set.middle.type),
-                                (lambda l: (l[0] - 10, l[1] - 50))(list(table_set.middle.center)), (255, 51, 255))
+                        color_image_copy = util.rectangle(color_image_copy, table_set.middle.center,
+                                                          table_set.middle.radius)
+                        color_image_copy = util.type_name(color_image_copy, table_set.middle.center,
+                               table_set.middle.type)
 
                     if not rtype & 0x04:
                         # up tableを描画
-                        color_image_copy = cv2.circle(color_image_copy, table_set.up.center, table_set.up.radius,
-                                                      (0, 255, 0), 2)
-                        color_image_copy = cv2.circle(color_image_copy, table_set.up.center, 3, (0, 255, 0), 2)
-                        putText(color_image_copy, str(table_set.up.dist), table_set.up.center, (255, 255, 0))
-                        putText(color_image_copy, str(table_set.up.type),
-                                (lambda l: (l[0] - 10, l[1] - 50))(list(table_set.up.center)), (255, 51, 255))
-                        putText(color_image_copy, str(table_set.up.center),
-                                (lambda l: (l[0] + 50, l[1] - 50))(list(table_set.up.center)), (255, 255, 0))
+                        color_image_copy = util.rectangle(color_image_copy, table_set.up.center,
+                                                          table_set.up.radius)
+                        color_image_copy = util.type_name(color_image_copy, table_set.up.center,
+                               table_set.up.type)
+
+                        # putText(color_image_copy, str(table_set.up.center),
+                        #        (lambda l: (l[0] + 50, l[1] - 50))(list(table_set.up.center)), (255, 255, 0))
 
                     if rtype != 0:
                         msg = 'Error:'
@@ -185,13 +173,20 @@ try:
                             msg += ' middle'
                         if rtype & 0x04:
                             msg += ' up'
-                        putText(color_image_copy, msg, (300, 446), (255, 75, 0))
-                        # color_image_copy = util.puttext(color_image_copy, msg, (100, 50), path+'/assets/Koruri-Regular.ttf', 3, (0, 0, 0))
+                        util.put_text(color_image_copy, msg, (300, 446), (255, 75, 0))
+                    else:
+                        if k == ord('l'):
+                            ret = util.make_distance_send(table_set)
+                            os.system(f'./path_planning.sh {ret.under} {ret.middle} {ret.up} {Config.zone}')
+                            view_window_name = 'view'
+                            view = cv2.imread('output/tmp.png')
+                            cv2.namedWindow(view_window_name)
+                            cv2.imshow(view_window_name, view)
 
-                    if not Config.mode:
+                    if Config.use_moving_average:
                         remaining_times = table_set.get_remaining_times()
 
-                        putText(color_image_copy,
+                        util.put_text(color_image_copy,
                                 f"{str(remaining_times[0])}, {str(remaining_times[1])}, {str(remaining_times[2])}",
                                 (10, 40), (255, 255, 255))
 
@@ -202,14 +197,6 @@ try:
                 for _table in tables:
                     color_image_copy = cv2.circle(color_image_copy, _table.center, _table.radius,
                                                   (0, 255, 0), 2)
-                    putText(color_image_copy, str(_table.center), (lambda l: (l[0] - 100, l[1] + 50))(list(_table.center)), (255,51,255))
-                    # putText(color_image_copy,
-                    #         str(func.make_distance_up_blue_zone_by_center(_table.center[1])),
-                    #         (lambda l: (l[0] - 100, l[1] + 100))(list(_table.center)),
-                    #         (255,51,255))
-
-
-
 
             thresh = cv2.applyColorMap(cv2.convertScaleAbs(thresh), cv2.COLORMAP_BONE)
             images = np.hstack((color_image_copy, thresh))
@@ -219,12 +206,6 @@ try:
                 break
             if k == ord('s'):  # パラメータの保存
                 util.save_param(h, s, v, lv, th, kn)
-            if k == ord('l'):
-                os.system(f'./path_planning.sh {3500} {2500} {1500} {0}')
-                view_window_name = 'view'
-                view = cv2.imread('output/tmp.png')
-                cv2.namedWindow(view_window_name)
-                cv2.imshow(view_window_name, view)
         except Exception as error:
             if str(error) == "wait_for_frames cannot be called before start()":
                 pipeline.stop()
