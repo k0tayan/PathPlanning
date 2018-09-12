@@ -243,9 +243,22 @@ class Utils(Config, Field):
                                          color, weight)
         return color_image_copy
 
-    def type_name(self, image, center, string):
-        return self.put_text(image, string,
-                (lambda l: (l[0] - 10, l[1] - 50))(list(center)), (0, 0, 0), size=1, weight=2)
+    def put_type_name(self, image, table):
+        return self.put_text(image,
+                             table.type,
+                             (lambda l: (l[0] - 10, l[1] - 50))(list(table.center)),
+                             (0, 0, 0), size=1, weight=2)
+
+    def put_dist(self, image, table):
+        return self.put_text(image, str(table.dist),
+                (lambda l: (l[0], l[1] + 100))(list(table.center)), (0, 0, 0), size=1, weight=2)
+
+    def put_info(self, image, table: Table):
+        c_image = self.rectangle(image, table.center,
+                       table.radius)
+        c_image = self.put_type_name(c_image, table)
+        c_image = self.put_dist(c_image, table)
+        return c_image
 
     def make_distance_send(self, tables):
         t = T()
