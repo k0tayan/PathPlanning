@@ -1,15 +1,20 @@
 import os
 import json
 import numpy as np
+import cv2
 
 try:
-    from .Config import Config, Path
+    from .Config import Config, Path, Field
 except:
-    from Config import Config, Path
+    from Config import Config, Path, Field
 
 
 class ApproximationFunction(Path):
     def __init__(self):
+        # 青ゾーン下
+        data = np.loadtxt(self.blue_under, delimiter=',')
+        self.blue_under_res = np.polyfit(data[:, 1], data[:, 0], 5)
+
         # 青ゾーン中央
         data = np.loadtxt(self.blue_middle, delimiter=',')
         self.blue_middle_res = np.polyfit(data[:, 1], data[:, 0], 4)
@@ -18,11 +23,35 @@ class ApproximationFunction(Path):
         data = np.loadtxt(self.blue_up, delimiter=',')
         self.blue_up_res = np.polyfit(data[:, 1], data[:, 0], 3)
 
+    def make_distance_under_blue_zone_by_center(self, x):
+        return np.poly1d(self.blue_under_res)(x)
+
     def make_distance_middle_blue_zone_by_center(self, x):
         return np.poly1d(self.blue_middle_res)(x)
 
     def make_distance_up_blue_zone_by_center(self, x):
         return np.poly1d(self.blue_up_res)(x)
+
+
+class T:
+    def __init__(self):
+        self.under = 0
+        self.middle = 0
+        self.up = 0
+
+    def validate(self):
+        if self.under < 1250:
+            self.under = 1250
+        if self.middle < 1250:
+            self.middle = 1250
+        if self.up < 1250:
+            self.up = 1250
+        if self.under > 3750:
+            self.under = 3750
+        if self.middle > 3750:
+            self.middle = 3750
+        if self.up > 3750:
+            self.up = 3750
 
 
 class Table(Config):
@@ -52,11 +81,11 @@ class Tables(Config, ApproximationFunction):
     def update(self, under: Table, middle: Table, up: Table):
         # mode=0: 深度
         # mode=1: 中心座標
-        rtype = 0 # 戻り値に使うやつ　成功したかどうかを入れる
-        if under.center[0] < self.partition_1: # 一番下のテーブル
+        rtype = 0  # 戻り値に使うやつ　成功したかどうかを入れる
+        if under.center[0] < self.partition_1:  # 一番下のテーブル
             self.under = under
             self.under.type = 'under'
-            if self.mode: # 中心座標
+            if self.mode:  # 中心座標
                 if self.use_moving_average:
                     self.under_center.append(self.under.center)
                     if len(self.under_center) > self.count:
@@ -65,10 +94,10 @@ class Tables(Config, ApproximationFunction):
                         self.under.dist = self.__round(self.make_distance_under(center))
                     else:
                         self.nud += 1
-                        self.under.dist = 0
+                        self.under.dist = -1
                 else:
                     self.under.dist = self.__round(self.make_distance_under(self.under.center))
-            else: # 深度
+            else:  # 深度
                 self.under_dist.append(self.__round(self.under.dist))
                 if len(self.under_dist) > self.count:
                     self.under_dist.pop(0)
@@ -76,14 +105,14 @@ class Tables(Config, ApproximationFunction):
                     # self.under.dist = self.make_distance_under(self.__round(self.under_dist.mean()))
                 else:
                     self.nud += 1
-                    self.under.dist = 0
+                    self.under.dist = -1
         else:
             rtype += 0x01
 
-        if self.partition_1 <= middle.center[0] <= self.partition_2: # 真ん中のテーブル
+        if self.partition_1 <= middle.center[0] <= self.partition_2:  # 真ん中のテーブル
             self.middle = middle
             self.middle.type = 'middle'
-            if self.mode: # 中心座標
+            if self.mode:  # 中心座標
                 if self.use_moving_average:
                     self.middle_center.append(self.middle.center)
                     if len(self.middle_center) > self.count:
@@ -92,11 +121,11 @@ class Tables(Config, ApproximationFunction):
                         self.middle.dist = self.__round(self.make_distance_middle(center))
                     else:
                         self.nmd += 1
-                        self.middle.dist = 0
+                        self.middle.dist = -1
                 else:
                     self.middle.dist = self.__round(self.make_distance_middle(self.middle.center))
 
-            else: # 深度
+            else:  # 深度
                 self.middle_dist.append(self.__round(self.middle.dist))
                 if len(self.middle_dist) > self.count:
                     self.middle_dist.pop(0)
@@ -104,14 +133,14 @@ class Tables(Config, ApproximationFunction):
                     # self.middle.dist = self.make_distance_middle(self.__round(self.middle_dist.mean()))
                 else:
                     self.nmd += 1
-                    self.middle.dist = 0
+                    self.middle.dist = -1
         else:
             rtype += 0x02
 
-        if self.partition_2 < up.center[0]: # 一番上のテーブル
+        if self.partition_2 < up.center[0]:  # 一番上のテーブル
             self.up = up
             self.up.type = 'up'
-            if self.mode: # 中心座標
+            if self.mode:  # 中心座標
                 if self.use_moving_average:
                     self.up_center.append(self.up.center)
                     if len(self.up_center) > self.count:
@@ -120,7 +149,7 @@ class Tables(Config, ApproximationFunction):
                         self.up.dist = self.__round(self.make_distance_up(center))
                     else:
                         self.nup += 1
-                        self.up.dist = 0
+                        self.up.dist = -1
                 else:
                     self.up.dist = self.__round(self.make_distance_up(self.up.center))
             else:
@@ -131,29 +160,33 @@ class Tables(Config, ApproximationFunction):
                     # self.up.dist = self.make_distance_up(self.__round(self.up_dist.mean()))
                 else:
                     self.nup += 1
-                    self.up.dist = 0
+                    self.up.dist = -1
         else:
             rtype += 0x04
         return rtype
 
     def get_remaining_times(self):
-        return self.count-self.nud, self.count-self.nmd, self.count-self.nup
+        return self.count - self.nud, self.count - self.nmd, self.count - self.nup
 
     def is_available(self):
         return (self.count - self.nud + self.count - self.nmd + self.count - self.nup) == 0
 
     def make_distance_under(self, distanceOrCenter):
         if self.mode:
-            return 0
+            y = distanceOrCenter[1]
+            if self.zone:
+                return 0
+            else:
+                return self.make_distance_under_blue_zone_by_center(y)
         else:
             return 0
 
     def make_distance_middle(self, distanceOrCenter):
         if self.mode:
             y = distanceOrCenter[1]
-            if self.zone: # 赤ゾーン
+            if self.zone:  # 赤ゾーン
                 return 0
-            else: #青ゾーン
+            else:  # 青ゾーン
                 return self.make_distance_middle_blue_zone_by_center(y)
         else:
             return 0
@@ -169,8 +202,7 @@ class Tables(Config, ApproximationFunction):
             return 0
 
 
-
-class Utils(Config):
+class Utils(Config, Field):
     def __init__(self, zone):
         self.path = os.path.dirname(os.path.abspath(__file__))
         self.zone = zone
@@ -193,11 +225,40 @@ class Utils(Config):
     def distance_filter(self, a):
         return 2 < a.dist < 6.5
 
+    def put_text(self, img, text, pos, color, size=1, weight=1):
+        return cv2.putText(img, text, tuple(pos), cv2.FONT_HERSHEY_SIMPLEX, size, color, weight, cv2.LINE_AA)
+
+    def rectangle(self, image, center, radius, weight=2):
+        if self.zone:
+            color = (38, 81, 255)
+        else:
+            color = (255, 167, 38)
+        color_image_copy = cv2.rectangle(image,
+                                         (lambda l: (
+                                             l[0] - radius, l[1] - radius))(
+                                             list(center)),
+                                         (lambda l: (
+                                             l[0] + radius, l[1] + radius))(
+                                             list(center)),
+                                         color, weight)
+        return color_image_copy
+
+    def type_name(self, image, center, string):
+        return self.put_text(image, string,
+                (lambda l: (l[0] - 10, l[1] - 50))(list(center)), (0, 0, 0), size=1, weight=2)
+
     def make_distance_send(self, tables):
-        _x1 = int(tables.under.dist * 1000)
-        _x2 = int(tables.middle.dist * 1000)
-        _x3 = int(tables.up.dist * 1000)
-        return _x1, _x2, _x3
+        t = T()
+        if self.zone:
+            t.under = int(tables.under.dist * 1000)
+            t.middle = int(tables.middle.dist * 1000)
+            t.up = int(tables.up.dist * 1000)
+        else:
+            t.under = self.FIELD_WIDTH - (int(tables.under.dist * 1000) + self.TABLE_WIDTH / 2)
+            t.middle = self.FIELD_WIDTH - (int(tables.middle.dist * 1000) + self.TABLE_WIDTH / 2)
+            t.up = self.FIELD_WIDTH - (int(tables.up.dist * 1000) + self.TABLE_WIDTH / 2)
+        t.validate()
+        return t
 
     def save_param(self, h, s, v, lv, th, kn):
         self.settings['h'] = h
