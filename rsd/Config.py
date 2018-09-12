@@ -21,3 +21,8 @@ class Path:
 class Field:
     FIELD_WIDTH = 5000
     TABLE_WIDTH = 500
+
+class Color:
+    blue = (255, 167, 38)
+    red = (38, 81, 255)
+    purple = (158, 77, 132)
