@@ -6,7 +6,7 @@ class Config:
     partition_2 = 374
     count = 300 # 移動平均の取る個数
     nud, nmd, nup = 0, 0, 0 # 表示用
-    setting_path = '/../settings.json'
+    setting_path = '/settings.json'
 
 
 class Path:
