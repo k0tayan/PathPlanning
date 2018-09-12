@@ -10,7 +10,7 @@ import socket
 import struct
 
 random_move = False
-send = True
+send = False
 zone = 'red'
 
 def main(arg):
@@ -102,7 +102,9 @@ def main(arg):
 
 if __name__ == '__main__':
     if len(sys.argv) == 5 or random_move:
-        arg = list(map(int, sys.argv[1:]))
+        arg = np.array(sys.argv[1:], dtype=np.float)
+        arg = np.array(arg, dtype=np.int)
+        # arg = list(map(int, sys.argv[1:]))
         main(arg)
     else:
         random_move = True
