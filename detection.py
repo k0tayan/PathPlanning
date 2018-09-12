@@ -7,7 +7,7 @@ try:
     from rsd.Detection import Table, Utils, Tables, ApproximationFunction
 except:
     from .rsd.Detection import Table, Utils, Tables
-from rsd.Config import Config
+from rsd.Config import Config, Color
 
 path = os.path.dirname(os.path.abspath(__file__))
 
@@ -24,6 +24,9 @@ pipeline.start(config)
 util = Utils(zone=zone)
 table_set = Tables()
 func = ApproximationFunction()
+t_count = 1
+t_list = list(range(1, 30))
+t_list += list(range(30, 0, -1))
 
 window_name = 'image'
 cv2.namedWindow(window_name)
@@ -69,8 +72,23 @@ try:
             # 画面に描画するようにcolor_imageをコピーした変数を作成
             color_image_copy = color_image
 
-            print(color_image_copy.shape)
-            blend = np.zeros((480, 640, 3))
+            # blend = np.zeros((480, 640, 3))
+            # blend[:, :Config.partition_1, 0] = 90
+
+            # partition_1の描画
+            color_image_copy = cv2.line(color_image_copy, (Config.partition_1, 0), (Config.partition_1, height), Color.purple, 2)
+
+            # partition_2の描画
+            color_image_copy = cv2.line(color_image_copy, (Config.partition_2, 0), (Config.partition_2, height), Color.purple, 2)
+
+            # 画面端で波打つみたいな？
+            t_count += 1
+            if t_count >= len(t_list)-1:
+                t_count = 0
+            if zone:
+                color_image_copy = cv2.rectangle(color_image_copy, (0, 0), (width, height), Color.red, t_list[t_count])
+            else:
+                color_image_copy = cv2.rectangle(color_image_copy, (0, 0), (width, height), Color.blue, t_list[t_count])
 
             # ブラーをかける
             color_image = cv2.medianBlur(color_image, 5)
@@ -89,8 +107,6 @@ try:
             kernel = np.ones((kn, kn), np.uint8)
             erode = cv2.erode(thresh, kernel)
             thresh = cv2.dilate(erode, kernel)
-
-            # thresh = cv2.fastNlMeansDenoising(thresh, None, 10, 10, 7,)
 
             if zone:
                 pass
@@ -144,26 +160,15 @@ try:
 
                     if not rtype & 0x01:
                         # under tableを描画
-                        color_image_copy = util.rectangle(color_image_copy, table_set.under.center,
-                                                          table_set.under.radius)
-                        color_image_copy = util.type_name(color_image_copy, table_set.under.center, table_set.under.type)
+                        color_image_copy = util.put_info(color_image_copy, table_set.under)
 
                     if not rtype & 0x02:
                         # middle tableを描画
-                        color_image_copy = util.rectangle(color_image_copy, table_set.middle.center,
-                                                          table_set.middle.radius)
-                        color_image_copy = util.type_name(color_image_copy, table_set.middle.center,
-                               table_set.middle.type)
+                        color_image_copy = util.put_info(color_image_copy, table_set.middle)
 
                     if not rtype & 0x04:
                         # up tableを描画
-                        color_image_copy = util.rectangle(color_image_copy, table_set.up.center,
-                                                          table_set.up.radius)
-                        color_image_copy = util.type_name(color_image_copy, table_set.up.center,
-                               table_set.up.type)
-
-                        # putText(color_image_copy, str(table_set.up.center),
-                        #        (lambda l: (l[0] + 50, l[1] - 50))(list(table_set.up.center)), (255, 255, 0))
+                        color_image_copy = util.put_info(color_image_copy, table_set.up)
 
                     if rtype != 0:
                         msg = 'Error:'
@@ -200,6 +205,7 @@ try:
 
             thresh = cv2.applyColorMap(cv2.convertScaleAbs(thresh), cv2.COLORMAP_BONE)
             images = np.hstack((color_image_copy, thresh))
+            # images = np.hstack((blend, thresh))
             cv2.imshow(window_name, images)
 
             if k == ord('q'):
@@ -210,6 +216,8 @@ try:
             if str(error) == "wait_for_frames cannot be called before start()":
                 pipeline.stop()
                 exit()
+            else:
+                print(error)
 except:
     pass
 finally:
