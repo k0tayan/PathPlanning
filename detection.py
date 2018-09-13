@@ -14,7 +14,7 @@ path = os.path.dirname(os.path.abspath(__file__))
 width = 640
 height = 480
 zone = Config.zone
-only_view = False
+only_view = True
 mode = Config.mode
 pipeline = rs.pipeline()
 config = rs.config()
@@ -75,12 +75,6 @@ try:
             # blend = np.zeros((480, 640, 3))
             # blend[:, :Config.partition_1, 0] = 90
 
-            # partition_1の描画
-            color_image_copy = cv2.line(color_image_copy, (Config.partition_1, 0), (Config.partition_1, height), Color.purple, 2)
-
-            # partition_2の描画
-            color_image_copy = cv2.line(color_image_copy, (Config.partition_2, 0), (Config.partition_2, height), Color.purple, 2)
-
             # 画面端で波打つみたいな？
             t_count += 1
             if t_count >= len(t_list)-1:
@@ -116,6 +110,17 @@ try:
 
                 # 下を捨てる
                 thresh[429:, :] = 0
+
+
+            if Config.side:
+                if Config.zone:
+                    pass
+                else:
+                    # partition_1の描画
+                    color_image_copy = cv2.line(color_image_copy, (Config.blue_partition_1, 0), (Config.blue_partition_1, height), Color.purple, 2)
+
+                    # partition_2の描画
+                    color_image_copy = cv2.line(color_image_copy, (Config.blue_partition_2, 0), (Config.blue_partition_2, height), Color.purple, 2)
 
             # 各座標について遠すぎるやつは黒で埋める
             # for y in range(480):
@@ -178,7 +183,7 @@ try:
                             msg += ' middle'
                         if rtype & 0x04:
                             msg += ' up'
-                        util.put_text(color_image_copy, msg, (300, 446), (255, 75, 0))
+                        util.put_text(color_image_copy, msg, (300, 446), Color.error)
                     else:
                         if k == ord('l'):
                             ret = util.make_distance_send(table_set)
@@ -193,7 +198,7 @@ try:
 
                         util.put_text(color_image_copy,
                                 f"{str(remaining_times[0])}, {str(remaining_times[1])}, {str(remaining_times[2])}",
-                                (10, 40), (255, 255, 255))
+                                (10, 40), Color.white)
 
                 except Exception as error:
                     print(error)
