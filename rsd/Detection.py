@@ -78,11 +78,23 @@ class Tables(Config, ApproximationFunction):
     def __round(self, n):
         return round(n, 3)
 
+    def __side_partition_validate_under(self, table: Table):
+        return ((not self.zone) and table.center[0] < self.blue_partition_1) or \
+        (self.zone and table.center[0] < self.red_partition_1)
+
+    def __side_partition_validate_middle(self, table: Table):
+        return (not self.zone and (self.blue_partition_1 <= table.center[0] <= self.blue_partition_2)) or \
+        (self.zone and (self.red_partition_1 <= table.center[0] <= self.red_partition_2))
+
+    def __side_partition_validate_up(self, table: Table):
+        return (not self.zone and (self.blue_partition_2 < table.center[0])) or \
+        (self.zone and (self.red_partition_1 < table.center[0]))
+
     def update(self, under: Table, middle: Table, up: Table):
         # mode=0: 深度
         # mode=1: 中心座標
         rtype = 0  # 戻り値に使うやつ　成功したかどうかを入れる
-        if under.center[0] < self.partition_1:  # 一番下のテーブル
+        if self.__side_partition_validate_under(under):  # 一番下のテーブル
             self.under = under
             self.under.type = 'under'
             if self.mode:  # 中心座標
@@ -109,7 +121,7 @@ class Tables(Config, ApproximationFunction):
         else:
             rtype += 0x01
 
-        if self.partition_1 <= middle.center[0] <= self.partition_2:  # 真ん中のテーブル
+        if self.__side_partition_validate_middle(middle):  # 真ん中のテーブル
             self.middle = middle
             self.middle.type = 'middle'
             if self.mode:  # 中心座標
@@ -137,7 +149,7 @@ class Tables(Config, ApproximationFunction):
         else:
             rtype += 0x02
 
-        if self.partition_2 < up.center[0]:  # 一番上のテーブル
+        if self.__side_partition_validate_up(up):  # 一番上のテーブル
             self.up = up
             self.up.type = 'up'
             if self.mode:  # 中心座標
@@ -225,8 +237,8 @@ class Utils(Config, Field):
     def distance_filter(self, a):
         return 2 < a.dist < 6.5
 
-    def put_text(self, img, text, pos, color, size=1, weight=1):
-        return cv2.putText(img, text, tuple(pos), cv2.FONT_HERSHEY_SIMPLEX, size, color, weight, cv2.LINE_AA)
+    def put_text(self, img: object, text: object, pos: object, color: object, size: object = 1, weight: object = 1) -> object:
+        return cv2.putText(img, text, tuple(pos), cv2.FONT_HERSHEY_TRIPLEX, size, color, weight, cv2.LINE_AA)
 
     def rectangle(self, image, center, radius, weight=2):
         if self.zone:
