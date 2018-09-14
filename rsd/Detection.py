@@ -23,6 +23,18 @@ class ApproximationFunction(Path):
         data = np.loadtxt(self.blue_up, delimiter=',')
         self.blue_up_res = np.polyfit(data[:, 1], data[:, 0], 3)
 
+        # フロント下
+        data = np.loadtxt(self.under_front, delimiter=',')
+        self.under_front_res = np.polyfit(data[:, 1], data[:, 0], 3)
+
+        # フロント中央
+        data = np.loadtxt(self.middle_front, delimiter=',')
+        self.middle_front_res = np.polyfit(data[:, 1], data[:, 0], 3)
+
+        # フロント上
+        data = np.loadtxt(self.up_front, delimiter=',')
+        self.up_front_res = np.polyfit(data[:, 1], data[:, 0], 3)
+
     def make_distance_under_blue_zone_by_center(self, x):
         return np.poly1d(self.blue_under_res)(x)
 
@@ -31,6 +43,15 @@ class ApproximationFunction(Path):
 
     def make_distance_up_blue_zone_by_center(self, x):
         return np.poly1d(self.blue_up_res)(x)
+
+    def make_distance_under_front_by_center(self, x):
+        return np.poly1d(self.under_front_res)(x)
+
+    def make_distance_middle_front_by_center(self, x):
+        return np.poly1d(self.middle_front_res)(x)
+
+    def make_distance_up_front_by_center(self, x):
+        return np.poly1d(self.up_front_res)(x)
 
 
 class T:
@@ -55,11 +76,16 @@ class T:
 
 
 class Table(Config):
-    def __init__(self, center, radius, dist):
+    def __init__(self, center, radius, dist, center_float):
         self.center = center
         self.radius = radius
         self.dist = round(dist, 3)
         self.type = ''
+        x = round(center_float[0], 1)
+        y = round(center_float[1], 1)
+        self.center_float = (x, y)
+        self.x = center[0]
+        self.y = center[1]
 
 
 class Tables(Config, ApproximationFunction):
@@ -79,18 +105,23 @@ class Tables(Config, ApproximationFunction):
         return round(n, 3)
 
     def __side_partition_validate_under(self, table: Table):
-        return ((not self.zone) and table.center[0] < self.blue_partition_1) or \
-        (self.zone and table.center[0] < self.red_partition_1)
+        if self.side:
+            return ((not self.zone) and table.center[0] < self.blue_partition_1) or \
+            (self.zone and table.center[0] < self.red_partition_1)
 
     def __side_partition_validate_middle(self, table: Table):
-        return (not self.zone and (self.blue_partition_1 <= table.center[0] <= self.blue_partition_2)) or \
-        (self.zone and (self.red_partition_1 <= table.center[0] <= self.red_partition_2))
+        if self.side:
+            return (not self.zone and (self.blue_partition_1 <= table.center[0] <= self.blue_partition_2)) or \
+            (self.zone and (self.red_partition_1 <= table.center[0] <= self.red_partition_2))
 
     def __side_partition_validate_up(self, table: Table):
-        return (not self.zone and (self.blue_partition_2 < table.center[0])) or \
-        (self.zone and (self.red_partition_1 < table.center[0]))
+        if self.side:
+            return (not self.zone and (self.blue_partition_2 < table.center[0])) or \
+            (self.zone and (self.red_partition_1 < table.center[0]))
 
     def update(self, under: Table, middle: Table, up: Table):
+        if not self.side:
+            return self.update_for_front(under, middle, up)
         # mode=0: 深度
         # mode=1: 中心座標
         rtype = 0  # 戻り値に使うやつ　成功したかどうかを入れる
@@ -121,7 +152,7 @@ class Tables(Config, ApproximationFunction):
         else:
             rtype += 0x01
 
-        if self.__side_partition_validate_middle(middle):  # 真ん中のテーブル
+        if self.__side_partition_validate_middle(middle):  # 中央のテーブル
             self.middle = middle
             self.middle.type = 'middle'
             if self.mode:  # 中心座標
@@ -177,6 +208,21 @@ class Tables(Config, ApproximationFunction):
             rtype += 0x04
         return rtype
 
+    def update_for_front(self, under: Table, middle: Table, up: Table):
+        self.under = under
+        self.under.type = 'under'
+        self.under.dist = self.__round(self.make_distance_under_front_by_center(under.x))
+
+        self.middle = middle
+        self.middle.type = 'middle'
+        self.middle.dist = self.__round(self.make_distance_middle_front_by_center(middle.x))
+
+        self.up = up
+        self.up.type = 'up'
+        self.up.dist = self.__round(self.make_distance_up_front_by_center(up.x))
+
+        return 0
+
     def get_remaining_times(self):
         return self.count - self.nud, self.count - self.nmd, self.count - self.nup
 
@@ -225,14 +271,20 @@ class Utils(Config, Field):
         except:
             self.settings = {'h': 180, 's': 45, 'v': 255, 'th': 210, 'k': 10}
 
-    def return_center(self, a):
+    def return_center_x(self, a):
         return a.center[0]
+
+    def return_center_y(self, a):
+        return a.center[1]
 
     def return_radius(self, a):
         return a.radius
 
     def radius_filter(self, a):
-        return 100 > a.radius > 20
+        if self.side:
+            return self.radius_filter_side[0] > a.radius > self.radius_filter_side[1]
+        else:
+            return self.radius_filter_front[0] > a.radius > self.radius_filter_front[1]
 
     def distance_filter(self, a):
         return 2 < a.dist < 6.5
@@ -282,6 +334,12 @@ class Utils(Config, Field):
             t.under = self.FIELD_WIDTH - (int(tables.under.dist * 1000) + self.TABLE_WIDTH / 2)
             t.middle = self.FIELD_WIDTH - (int(tables.middle.dist * 1000) + self.TABLE_WIDTH / 2)
             t.up = self.FIELD_WIDTH - (int(tables.up.dist * 1000) + self.TABLE_WIDTH / 2)
+
+        if not self.side:
+            t.under = self.FIELD_WIDTH - (int(tables.under.dist * 1000) + self.TABLE_WIDTH / 2)
+            t.middle = self.FIELD_WIDTH - (int(tables.middle.dist * 1000) + self.TABLE_WIDTH / 2)
+            t.up = self.FIELD_WIDTH - (int(tables.up.dist * 1000) + self.TABLE_WIDTH / 2)
+
         t.validate()
         return t
 
