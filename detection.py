@@ -11,17 +11,20 @@ from rsd.Config import Config, Color
 
 path = os.path.dirname(os.path.abspath(__file__))
 
-width = 640
-height = 480
-zone = Config.zone
-only_view = True
+if Config.side:
+    width = 640
+    height = 480
+else:
+    width = 1280
+    height = 720
+only_view = False
 mode = Config.mode
 pipeline = rs.pipeline()
 config = rs.config()
 config.enable_stream(rs.stream.depth, width, height, rs.format.z16, 30)
 config.enable_stream(rs.stream.color, width, height, rs.format.bgr8, 30)
 pipeline.start(config)
-util = Utils(zone=zone)
+util = Utils(zone=Config.zone)
 table_set = Tables()
 func = ApproximationFunction()
 t_count = 1
@@ -75,15 +78,6 @@ try:
             # blend = np.zeros((480, 640, 3))
             # blend[:, :Config.partition_1, 0] = 90
 
-            # 画面端で波打つみたいな？
-            t_count += 1
-            if t_count >= len(t_list)-1:
-                t_count = 0
-            if zone:
-                color_image_copy = cv2.rectangle(color_image_copy, (0, 0), (width, height), Color.red, t_list[t_count])
-            else:
-                color_image_copy = cv2.rectangle(color_image_copy, (0, 0), (width, height), Color.blue, t_list[t_count])
-
             # ブラーをかける
             color_image = cv2.medianBlur(color_image, 5)
             # hsv空間に変換
@@ -102,25 +96,16 @@ try:
             erode = cv2.erode(thresh, kernel)
             thresh = cv2.dilate(erode, kernel)
 
-            if zone:
-                pass
-            else:
-                # 左を捨てる
-                thresh[:, :45] = 0
-
-                # 下を捨てる
-                thresh[429:, :] = 0
-
 
             if Config.side:
                 if Config.zone:
                     pass
                 else:
-                    # partition_1の描画
-                    color_image_copy = cv2.line(color_image_copy, (Config.blue_partition_1, 0), (Config.blue_partition_1, height), Color.purple, 2)
+                    # 左を捨てる
+                    thresh[:, :45] = 0
 
-                    # partition_2の描画
-                    color_image_copy = cv2.line(color_image_copy, (Config.blue_partition_2, 0), (Config.blue_partition_2, height), Color.purple, 2)
+                    # 下を捨てる
+                    thresh[429:, :] = 0
 
             # 各座標について遠すぎるやつは黒で埋める
             # for y in range(480):
@@ -140,24 +125,30 @@ try:
                 (x, y), radius = cv2.minEnclosingCircle(cnt)
                 center = (int(x), int(y))
                 radius = int(radius)
+                if only_view:
+                    color_image_copy = cv2.circle(color_image_copy, center, radius,
+                                                  Color.purple, 2)
                 dist = depth.get_distance(int(x), int(y))
-                table = Table(center, radius, dist)
+                table = Table(center, radius, dist, (x, y))
                 tables.append(table)
 
-            # 距離でフィルタ
-            tables = list(filter(util.distance_filter, tables))
+            """# 距離でフィルタ
+            tables = list(filter(util.distance_filter, tables))"""
 
             # 半径でフィルタ
             tables = list(filter(util.radius_filter, tables))
 
             # 半径が大きい順にソート
-            tables.sort(key=util.return_radius)
+            tables.sort(key=util.return_radius, reverse=True)
 
             # 大きい3つだけを抽出
             tables = tables[:3]
 
             # X座標が小さい順にソート
-            tables.sort(key=util.return_center)
+            if Config.side:
+                tables.sort(key=util.return_center_x)
+            else:
+                tables.sort(key=util.return_center_y)
 
             if len(tables) == 3 and not only_view:
                 try:
@@ -193,7 +184,7 @@ try:
                             cv2.namedWindow(view_window_name)
                             cv2.imshow(view_window_name, view)
 
-                    if Config.use_moving_average:
+                    if Config.use_moving_average and Config.side:
                         remaining_times = table_set.get_remaining_times()
 
                         util.put_text(color_image_copy,
@@ -204,12 +195,36 @@ try:
                     print(error)
 
             if only_view:
-                for _table in tables:
+                for i, _table in enumerate(tables):
                     color_image_copy = cv2.circle(color_image_copy, _table.center, _table.radius,
                                                   (0, 255, 0), 2)
+                    color_image_copy = util.put_text(color_image_copy, str(_table.center_float), _table.center, Color.red)
+
+
+            # 画面端で波打つみたいな？
+            t_count += 1
+            if t_count >= len(t_list)-1:
+                t_count = 0
+            if Config.zone:
+                color_image_copy = cv2.rectangle(color_image_copy, (0, 0), (width, height), Color.red, t_list[t_count])
+            else:
+                color_image_copy = cv2.rectangle(color_image_copy, (0, 0), (width, height), Color.blue, t_list[t_count])
+
+            if Config.side:
+                if Config.zone:
+                    pass
+                else:
+                    # partition_1の描画
+                    color_image_copy = cv2.line(color_image_copy, (Config.blue_partition_1, 0),
+                                                (Config.blue_partition_1, height), Color.purple, 2)
+
+                    # partition_2の描画
+                    color_image_copy = cv2.line(color_image_copy, (Config.blue_partition_2, 0),
+                                                (Config.blue_partition_2, height), Color.purple, 2)
 
             thresh = cv2.applyColorMap(cv2.convertScaleAbs(thresh), cv2.COLORMAP_BONE)
             images = np.hstack((color_image_copy, thresh))
+            images = cv2.resize(images, (1280, 480))
             # images = np.hstack((blend, thresh))
             cv2.imshow(window_name, images)
 
@@ -219,6 +234,9 @@ try:
                 util.save_param(h, s, v, lv, th, kn)
         except Exception as error:
             if str(error) == "wait_for_frames cannot be called before start()":
+                pipeline.stop()
+                exit()
+            elif str(error) == "Frame didn't arrived within 5000":
                 pipeline.stop()
                 exit()
             else:
