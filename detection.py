@@ -40,6 +40,7 @@ cv2.createTrackbar('V', window_name, 0, 255, util.nothing)
 cv2.createTrackbar('LV', window_name, 0, 255, util.nothing)
 cv2.createTrackbar('threshold', window_name, 0, 255, util.nothing)
 cv2.createTrackbar('kernel', window_name, 0, 30, util.nothing)
+cv2.createTrackbar('partition', window_name, 0, 500, util.nothing)
 
 cv2.setTrackbarPos('H', window_name, util.settings['h'])
 cv2.setTrackbarPos('S', window_name, util.settings['s'])
@@ -67,6 +68,7 @@ try:
             lv = cv2.getTrackbarPos('LV', window_name)
             th = cv2.getTrackbarPos('threshold', window_name)
             kn = cv2.getTrackbarPos('kernel', window_name)
+            bar = cv2.getTrackbarPos('partition', window_name)
 
             # スライダーの値から白色の上限値、下限値を指定
             upper_white = np.array([h, s, v])
@@ -106,6 +108,8 @@ try:
 
                     # 下を捨てる
                     thresh[429:, :] = 0
+            else:
+                thresh[:bar, :] = 0
 
             # 各座標について遠すぎるやつは黒で埋める
             # for y in range(480):
@@ -179,10 +183,10 @@ try:
                         if k == ord('l'):
                             ret = util.make_distance_send(table_set)
                             os.system(f'./path_planning.sh {ret.under} {ret.middle} {ret.up} {Config.zone}')
-                            view_window_name = 'view'
-                            view = cv2.imread('output/tmp.png')
-                            cv2.namedWindow(view_window_name)
-                            cv2.imshow(view_window_name, view)
+                            # view_window_name = 'view'
+                            # view = cv2.imread('output/tmp.png')
+                            # cv2.namedWindow(view_window_name)
+                            # cv2.imshow(view_window_name, view)
 
                     if Config.use_moving_average and Config.side:
                         remaining_times = table_set.get_remaining_times()
@@ -225,7 +229,6 @@ try:
             thresh = cv2.applyColorMap(cv2.convertScaleAbs(thresh), cv2.COLORMAP_BONE)
             images = np.hstack((color_image_copy, thresh))
             images = cv2.resize(images, (1280, 480))
-            # images = np.hstack((blend, thresh))
             cv2.imshow(window_name, images)
 
             if k == ord('q'):
