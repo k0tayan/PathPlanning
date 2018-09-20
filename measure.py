@@ -33,6 +33,7 @@ to_csv = []
 unders = []
 middles = []
 ups = []
+background = cv2.imread("background.png", 0)
 
 window_name = 'image'
 cv2.namedWindow(window_name)
@@ -59,6 +60,8 @@ try:
             depth = frames.get_depth_frame()
             color_frame = frames.get_color_frame()
             color_image = np.asanyarray(color_frame.get_data())
+            depth_data = depth.as_frame().get_data()
+            np_image = np.asanyarray(depth_data)
 
             # キーの入力待ち
             k = cv2.waitKey(1)
@@ -78,6 +81,7 @@ try:
             # 画面に描画するようにcolor_imageをコピーした変数を作成
             color_image_copy = color_image
 
+
             # ブラーをかける
             color_image = cv2.medianBlur(color_image, 5)
             # hsv空間に変換
@@ -96,6 +100,19 @@ try:
             erode = cv2.erode(thresh, kernel)
             thresh = cv2.dilate(erode, kernel)
 
+            white_indexes = list(np.where(thresh > 150))
+
+            for white_index in zip(white_indexes[0], white_indexes[1]):
+                dist = np_image[white_index[0]][white_index[1]]
+                if (white_index[1], white_index[0]) > (1000, 300) and dist > 2800:
+                    thresh[white_index[0]][white_index[1]] = 0
+                    color_image_copy[white_index[0]][white_index[1]] = [255, 0, 0]
+
+            # 縮小と膨張
+            kernel = np.ones((kn, kn), np.uint8)
+            erode = cv2.erode(thresh, kernel)
+            thresh = cv2.dilate(erode, kernel)
+
             # 輪郭抽出
             imgEdge, contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
@@ -107,11 +124,14 @@ try:
                 center = (int(x), int(y))
                 radius = int(radius)
                 dist = depth.get_distance(int(x), int(y))
+
+                # color_image_copy = util.put_text(color_image_copy, str(dist)[:5], (int(x), int(y)+50),
+                #                                  Color.black)
                 table = Table(center, radius, dist, (x, y))
                 tables.append(table)
 
-            """# 距離でフィルタ
-            tables = list(filter(util.distance_filter, tables))"""
+            # 距離でフィルタ
+            # tables = list(filter(util.distance_filter, tables))
 
             # 半径でフィルタ
             tables = list(filter(util.radius_filter, tables))
@@ -137,6 +157,8 @@ try:
                 if i == 2:
                     color_image_copy = util.put_text(color_image_copy, 'up', (_table.x-120, _table.y-50),
                                                      Color.black)
+                    color_image_copy = util.put_text(color_image_copy, str(_table.dist)[:5], (int(_table.x), int(_table.y) + 50),
+                                                                                      Color.black)
 
                 color_image_copy = cv2.circle(color_image_copy, _table.center, _table.radius,
                                               (0, 255, 0), 2)
@@ -149,6 +171,8 @@ try:
 
             if k == ord('q'):
                 break
+            if k == ord('b'):
+                cv2.imwrite("background.png", thresh)
             if k == ord('i'):
                 if len(tables) == 3:
                     print('Please input real distance')

@@ -2,12 +2,14 @@ import pyrealsense2 as rs
 import numpy as np
 import os
 import cv2
+import time
 
 try:
     from rsd.Detection import Table, Utils, Tables, ApproximationFunction
 except:
     from .rsd.Detection import Table, Utils, Tables
 from rsd.Config import Config, Color
+from path_planning import PathPlanning
 
 path = os.path.dirname(os.path.abspath(__file__))
 
@@ -27,20 +29,26 @@ pipeline.start(config)
 util = Utils(zone=Config.zone)
 table_set = Tables()
 func = ApproximationFunction()
+plan = PathPlanning(False)
 t_count = 1
 t_list = list(range(1, 30))
 t_list += list(range(30, 0, -1))
+timer = time.time()
+save = True
 
 window_name = 'image'
 cv2.namedWindow(window_name)
-cv2.moveWindow(window_name, 0, 0)
+cv2.moveWindow(window_name, 450, 0, )
 cv2.createTrackbar('H', window_name, 0, 255, util.nothing)
 cv2.createTrackbar('S', window_name, 0, 255, util.nothing)
 cv2.createTrackbar('V', window_name, 0, 255, util.nothing)
 cv2.createTrackbar('LV', window_name, 0, 255, util.nothing)
 cv2.createTrackbar('threshold', window_name, 0, 255, util.nothing)
-cv2.createTrackbar('kernel', window_name, 0, 30, util.nothing)
-cv2.createTrackbar('partition', window_name, 0, 500, util.nothing)
+cv2.createTrackbar('kernel', window_name, 0, 100, util.nothing)
+cv2.createTrackbar('horizon', window_name, 0, height, util.nothing)
+cv2.createTrackbar('vertical', window_name, 0, width, util.nothing)
+cv2.createTrackbar('remove_side', window_name, 0, 30, util.nothing)
+cv2.createTrackbar('zone', window_name, 0, 1, util.nothing)
 
 cv2.setTrackbarPos('H', window_name, util.settings['h'])
 cv2.setTrackbarPos('S', window_name, util.settings['s'])
@@ -48,6 +56,8 @@ cv2.setTrackbarPos('V', window_name, util.settings['v'])
 cv2.setTrackbarPos('LV', window_name, util.settings['lv'])
 cv2.setTrackbarPos('threshold', window_name, util.settings['th'])
 cv2.setTrackbarPos('kernel', window_name, util.settings['k'])
+cv2.setTrackbarPos('remove_side', window_name, util.settings['rms'])
+cv2.setTrackbarPos('zone', window_name, Config.zone)
 
 try:
     while True:
@@ -57,6 +67,9 @@ try:
             depth = frames.get_depth_frame()
             color_frame = frames.get_color_frame()
             color_image = np.asanyarray(color_frame.get_data())
+
+            depth_data = depth.as_frame().get_data()
+            np_image = np.asanyarray(depth_data)
 
             # キーの入力待ち
             k = cv2.waitKey(1)
@@ -68,7 +81,10 @@ try:
             lv = cv2.getTrackbarPos('LV', window_name)
             th = cv2.getTrackbarPos('threshold', window_name)
             kn = cv2.getTrackbarPos('kernel', window_name)
-            bar = cv2.getTrackbarPos('partition', window_name)
+            horizon = cv2.getTrackbarPos('horizon', window_name)
+            vertical = cv2.getTrackbarPos('vertical', window_name)
+            remove_side = cv2.getTrackbarPos('remove_side', window_name)
+            Config.zone = cv2.getTrackbarPos('zone', window_name)
 
             # スライダーの値から白色の上限値、下限値を指定
             upper_white = np.array([h, s, v])
@@ -77,8 +93,11 @@ try:
             # 画面に描画するようにcolor_imageをコピーした変数を作成
             color_image_copy = color_image
 
-            # blend = np.zeros((480, 640, 3))
-            # blend[:, :Config.partition_1, 0] = 90
+            pts = np.array([[remove_side*50, 0], [width, 0], [width, height]])
+            if Config.zone:
+                color_image_copy = cv2.fillPoly(color_image_copy, pts=[pts], color=Color.red)
+            else:
+                color_image_copy = cv2.fillPoly(color_image_copy, pts=[pts], color=Color.blue)
 
             # ブラーをかける
             color_image = cv2.medianBlur(color_image, 5)
@@ -109,15 +128,23 @@ try:
                     # 下を捨てる
                     thresh[429:, :] = 0
             else:
-                thresh[:bar, :] = 0
+                pass
+                # thresh[:horizon, :] = 0
+                # thresh[:, 1165:] = 0
+                # thresh[336:, 1000:] = 0
 
-            # 各座標について遠すぎるやつは黒で埋める
-            # for y in range(480):
-            #    for x in range(640):
-            #        dist = depth.get_distance(x, y)
-            #        if 6.7 < dist:
-            #            thresh[y][x] = 0
-            # print(thresh)
+            white_indexes = list(np.where(thresh > 150))
+
+            for white_index in zip(white_indexes[0], white_indexes[1]):
+                dist = np_image[white_index[0]][white_index[1]]
+                if (white_index[1], white_index[0]) > (1000, 300) and dist > 2800 + white_index[0]:
+                    thresh[white_index[0]][white_index[1]] = 0
+                    color_image_copy[white_index[0]][white_index[1]] = [255, 0, 0]
+
+            # 縮小と膨張
+            kernel = np.ones((kn+2, kn+2), np.uint8)
+            erode = cv2.erode(thresh, kernel)
+            thresh = cv2.dilate(erode, kernel)
 
             # 輪郭抽出
             imgEdge, contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
@@ -136,8 +163,11 @@ try:
                 table = Table(center, radius, dist, (x, y))
                 tables.append(table)
 
-            """# 距離でフィルタ
-            tables = list(filter(util.distance_filter, tables))"""
+
+            # 距離でフィルタ
+            # tables = list(filter(util.distance_filter, tables))
+
+            tables = list(filter(util.is_table, tables))
 
             # 半径でフィルタ
             tables = list(filter(util.radius_filter, tables))
@@ -180,13 +210,11 @@ try:
                             msg += ' up'
                         util.put_text(color_image_copy, msg, (300, 446), Color.error)
                     else:
-                        if k == ord('l'):
+                        if time.time() - timer > 3:
                             ret = util.make_distance_send(table_set)
-                            os.system(f'./path_planning.sh {ret.under} {ret.middle} {ret.up} {Config.zone}')
-                            # view_window_name = 'view'
-                            # view = cv2.imread('output/tmp.png')
-                            # cv2.namedWindow(view_window_name)
-                            # cv2.imshow(view_window_name, view)
+                            plan.main([ret.under, ret.middle, ret.up, Config.zone])
+                            os.system("imgcat output/tmp.png")
+                            timer = time.time()
 
                     if Config.use_moving_average and Config.side:
                         remaining_times = table_set.get_remaining_times()
@@ -198,11 +226,12 @@ try:
                 except Exception as error:
                     print(error)
 
-            if only_view:
-                for i, _table in enumerate(tables):
+
+            for i, _table in enumerate(tables):
+                if only_view:
                     color_image_copy = cv2.circle(color_image_copy, _table.center, _table.radius,
-                                                  (0, 255, 0), 2)
-                    color_image_copy = util.put_text(color_image_copy, str(_table.center_float), _table.center, Color.red)
+                                              (0, 255, 0), 2)
+                color_image_copy = util.put_text(color_image_copy, str(_table.center_float), _table.center, Color.black)
 
 
             # 画面端で波打つみたいな？
@@ -228,13 +257,14 @@ try:
 
             thresh = cv2.applyColorMap(cv2.convertScaleAbs(thresh), cv2.COLORMAP_BONE)
             images = np.hstack((color_image_copy, thresh))
-            images = cv2.resize(images, (1280, 480))
+            if not Config.side:
+                images = cv2.resize(images, (int(1280*0.65), int(480*0.65)))
             cv2.imshow(window_name, images)
 
             if k == ord('q'):
                 break
             if k == ord('s'):  # パラメータの保存
-                util.save_param(h, s, v, lv, th, kn)
+                util.save_param(h, s, v, lv, th, kn, remove_side)
         except Exception as error:
             if str(error) == "wait_for_frames cannot be called before start()":
                 pipeline.stop()
