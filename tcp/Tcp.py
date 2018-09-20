@@ -38,7 +38,7 @@ class Tcp:
 
     def connect(self):
         self._socket = socket.socket()
-        self._socket.settimeout(3)
+        self._socket.settimeout(1)
         try:
             self._socket.connect((self.host, self.port))
         except Exception as error:
@@ -74,7 +74,7 @@ class Tcp:
         buf[0] = (sum(buf[1:]) & 0x7f) | 0x80
         # for i, b in enumerate(buf):
            #  print("data[{0}]: 0b{1}".format(i, format(b, 'b').zfill(8)))
-        print("check_sum:{0}, sum:{1}".format(buf[0] & 0x7f, sum(buf[1:]) & 0x7f))
+        # print("check_sum:{0}, sum:{1}".format(buf[0] & 0x7f, sum(buf[1:]) & 0x7f))
         p = struct.pack('B' * len(buf), *buf)
         self._socket.send(p)
         self._socket.close()
