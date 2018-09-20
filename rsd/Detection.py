@@ -124,7 +124,7 @@ class Tables(Config, ApproximationFunction):
             return self.update_for_front(under, middle, up)
         # mode=0: 深度
         # mode=1: 中心座標
-        rtype = 0  # 戻り値に使うやつ　成功したかどうかを入れる
+        rtype = 0  # 戻り値に使うやつ 成功したかどうかを入れる
         if self.__side_partition_validate_under(under):  # 一番下のテーブル
             self.under = under
             self.under.type = 'under'
@@ -260,16 +260,29 @@ class Tables(Config, ApproximationFunction):
             return 0
 
 
-class Utils(Config, Field):
+class Utils(Config, Field, Path):
     def __init__(self, zone):
         self.path = os.path.dirname(os.path.abspath(__file__))
         self.zone = zone
         self.nothing = lambda x: x
+
+        data = np.loadtxt(self.field_max_right, delimiter=',')
+        self.field_max_right_res = np.polyfit(data[:, 1], data[:, 0], 1)
         try:
             f = open(self.path + self.setting_path, 'r')
             self.settings = json.load(f)
         except:
-            self.settings = {'h': 180, 's': 45, 'v': 255, 'th': 210, 'k': 10}
+            self.settings = {'h': 180, 's': 45, 'v': 255, 'th': 210, 'k': 10, 'rms':9}
+
+    def is_over_field_max_right(self, table):
+        x = np.poly1d(self.field_max_right_res)(table.y)
+        if table.x - x > 10:
+            return True
+        else:
+            return False
+
+    def is_table(self, table):
+        return not self.is_over_field_max_right(table)
 
     def return_center_x(self, a):
         return a.center[0]
@@ -287,7 +300,10 @@ class Utils(Config, Field):
             return self.radius_filter_front[0] > a.radius > self.radius_filter_front[1]
 
     def distance_filter(self, a):
-        return 2 < a.dist < 6.5
+        if self.side:
+            return 2 < a.dist < 6.5
+        else:
+            return self.distance_filter_front[0] < a.dist < self.distance_filter_front[1]
 
     def put_text(self, img: object, text: object, pos: object, color: object, size: object = 1, weight: object = 1) -> object:
         return cv2.putText(img, text, tuple(pos), cv2.FONT_HERSHEY_TRIPLEX, size, color, weight, cv2.LINE_AA)
@@ -343,12 +359,13 @@ class Utils(Config, Field):
         t.validate()
         return t
 
-    def save_param(self, h, s, v, lv, th, kn):
+    def save_param(self, h, s, v, lv, th, kn, rms):
         self.settings['h'] = h
         self.settings['s'] = s
         self.settings['v'] = v
         self.settings['lv'] = lv
         self.settings['th'] = th
         self.settings['k'] = kn
+        self.settings['rms'] = rms
         f = open(self.path + self.setting_path, 'w')
         json.dump(self.settings, f)
