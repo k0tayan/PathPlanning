@@ -346,23 +346,33 @@ class Path(FlipPoint):
             table1 = tmp
         if table1.x < table2.x:
             if table1.goal_state == 'LEFT' and table2.goal_state == 'LEFT':
+                print(1)
                 return Point(table1.goal.x, table2.goal.y)
             elif table1.goal_state == 'RIGHT' and table2.goal_state == 'LEFT':
-                return Point(table1.goal.x, table2.goal.y)
+                print(2)
+                # return Point(table1.goal.x, table2.goal.y)
+                return Point(table2.goal.x, table1.goal.y)
             elif table1.goal_state == 'RIGHT' and table2.goal_state == 'RIGHT':
+                print(3)
                 return Point(table2.goal.x, table1.goal.y)
             elif table1.goal_state == 'RIGHT' and table2.goal_state == 'FRONT':
+                print(4)
                 return Point(table2.goal.x, table1.goal.y)
             else:
                 raise Exception('kotayan is foolish! More think!')
         else:
             if table1.goal_state == 'LEFT' and table2.goal_state == 'LEFT':
+                print(5)
                 return Point(table2.goal.x, table1.goal.y)
             elif table1.goal_state == 'LEFT' and table2.goal_state == 'RIGHT':
-                return Point(table1.goal.x, table2.goal.y)
+                print(6)
+                # return Point(table1.goal.x, table2.goal.y)
+                return Point(table2.goal.x, table1.goal.y)
             elif table1.goal_state == 'RIGHT' and table2.goal_state == 'RIGHT':
+                print(7)
                 return Point(table1.goal.x, table2.goal.y)
             elif table1.goal_state == 'LEFT' and table2.goal_state == 'FRONT':
+                print(8)
                 return Point(table2.goal.x, table1.goal.y)
             else:
                 raise Exception('kotayan is foolish! More think!')
