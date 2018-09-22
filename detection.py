@@ -29,12 +29,14 @@ pipeline.start(config)
 util = Utils(zone=Config.zone)
 table_set = Tables()
 func = ApproximationFunction()
-plan = PathPlanning(False)
+plan = PathPlanning(True)
 t_count = 1
 t_list = list(range(1, 30))
 t_list += list(range(30, 0, -1))
 timer = time.time()
 save = True
+detection = True
+sc = 1
 
 window_name = 'image'
 cv2.namedWindow(window_name)
@@ -58,6 +60,7 @@ cv2.setTrackbarPos('threshold', window_name, util.settings['th'])
 cv2.setTrackbarPos('kernel', window_name, util.settings['k'])
 cv2.setTrackbarPos('remove_side', window_name, util.settings['rms'])
 cv2.setTrackbarPos('zone', window_name, Config.zone)
+print('---------------START DETECTION---------------')
 
 try:
     while True:
@@ -93,7 +96,10 @@ try:
             # 画面に描画するようにcolor_imageをコピーした変数を作成
             color_image_copy = color_image
 
-            pts = np.array([[remove_side*50, 0], [width, 0], [width, height]])
+            # 画像保存用にcolor_imageをコピーした変数を作成
+            color_image_for_save = color_image.copy()
+
+            pts = np.array([[remove_side * 50, 0], [width, 0], [width, height]])
             if Config.zone:
                 color_image_copy = cv2.fillPoly(color_image_copy, pts=[pts], color=Color.red)
             else:
@@ -117,122 +123,129 @@ try:
             erode = cv2.erode(thresh, kernel)
             thresh = cv2.dilate(erode, kernel)
 
+            if not detection:
+                util.put_info_by_set(color_image_copy, table_set, Color.black)
+                if k == ord('r'):
+                    print(f'---------------STORED:{sc}---------------')
+                    util.save_table_images(color_image_for_save, table_set)
+                    sc += 1
+                if time.time() - timer > 3:
+                    ret = util.make_distance_send(table_set)
+                    plan.main([ret.under, ret.middle, ret.up, Config.zone])
+                    os.system("imgcat output/tmp.png")
+                    timer = time.time()
 
-            if Config.side:
-                if Config.zone:
-                    pass
-                else:
-                    # 左を捨てる
-                    thresh[:, :45] = 0
-
-                    # 下を捨てる
-                    thresh[429:, :] = 0
-            else:
-                pass
-                # thresh[:horizon, :] = 0
-                # thresh[:, 1165:] = 0
-                # thresh[336:, 1000:] = 0
-
-            white_indexes = list(np.where(thresh > 150))
-
-            for white_index in zip(white_indexes[0], white_indexes[1]):
-                dist = np_image[white_index[0]][white_index[1]]
-                if (white_index[1], white_index[0]) > (1000, 300) and dist > 2800 + white_index[0]:
-                    thresh[white_index[0]][white_index[1]] = 0
-                    color_image_copy[white_index[0]][white_index[1]] = [255, 0, 0]
-
-            # 縮小と膨張
-            kernel = np.ones((kn+2, kn+2), np.uint8)
-            erode = cv2.erode(thresh, kernel)
-            thresh = cv2.dilate(erode, kernel)
-
-            # 輪郭抽出
-            imgEdge, contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-
-            # 見つかった輪郭をリストに入れる
-            tables = []
-            contours.sort(key=cv2.contourArea, reverse=True)
-            for cnt in contours:
-                (x, y), radius = cv2.minEnclosingCircle(cnt)
-                center = (int(x), int(y))
-                radius = int(radius)
-                if only_view:
-                    color_image_copy = cv2.circle(color_image_copy, center, radius,
-                                                  Color.purple, 2)
-                dist = depth.get_distance(int(x), int(y))
-                table = Table(center, radius, dist, (x, y))
-                tables.append(table)
-
-
-            # 距離でフィルタ
-            # tables = list(filter(util.distance_filter, tables))
-
-            tables = list(filter(util.is_table, tables))
-
-            # 半径でフィルタ
-            tables = list(filter(util.radius_filter, tables))
-
-            # 半径が大きい順にソート
-            tables.sort(key=util.return_radius, reverse=True)
-
-            # 大きい3つだけを抽出
-            tables = tables[:3]
-
-            # X座標が小さい順にソート
-            if Config.side:
-                tables.sort(key=util.return_center_x)
-            else:
-                tables.sort(key=util.return_center_y)
-
-            if len(tables) == 3 and not only_view:
-                try:
-                    rtype = table_set.update(tables[0], tables[1], tables[2])
-
-                    if not rtype & 0x01:
-                        # under tableを描画
-                        color_image_copy = util.put_info(color_image_copy, table_set.under)
-
-                    if not rtype & 0x02:
-                        # middle tableを描画
-                        color_image_copy = util.put_info(color_image_copy, table_set.middle)
-
-                    if not rtype & 0x04:
-                        # up tableを描画
-                        color_image_copy = util.put_info(color_image_copy, table_set.up)
-
-                    if rtype != 0:
-                        msg = 'Error:'
-                        if rtype & 0x01:
-                            msg += ' under'
-                        if rtype & 0x02:
-                            msg += ' middle'
-                        if rtype & 0x04:
-                            msg += ' up'
-                        util.put_text(color_image_copy, msg, (300, 446), Color.error)
+            if detection:
+                if Config.side:
+                    if Config.zone:
+                        pass
                     else:
-                        if time.time() - timer > 3:
-                            ret = util.make_distance_send(table_set)
-                            plan.main([ret.under, ret.middle, ret.up, Config.zone])
-                            os.system("imgcat output/tmp.png")
-                            timer = time.time()
+                        # 左を捨てる
+                        thresh[:, :45] = 0
 
-                    if Config.use_moving_average and Config.side:
-                        remaining_times = table_set.get_remaining_times()
+                        # 下を捨てる
+                        thresh[429:, :] = 0
+                else:
+                    thresh[:horizon, :] = 0
+                    # thresh[:, 1165:] = 0
+                    # thresh[336:, 1000:] = 0
 
-                        util.put_text(color_image_copy,
-                                f"{str(remaining_times[0])}, {str(remaining_times[1])}, {str(remaining_times[2])}",
-                                (10, 40), Color.white)
+                white_indexes = list(np.where(thresh > 150))
 
-                except Exception as error:
-                    print(error)
+                for white_index in zip(white_indexes[0], white_indexes[1]):
+                    dist = np_image[white_index[0]][white_index[1]]
+                    if (white_index[1], white_index[0]) > (1000, 300) and dist > 2800 + white_index[0]:
+                        thresh[white_index[0]][white_index[1]] = 0
+                        color_image_copy[white_index[0]][white_index[1]] = [255, 0, 0]
+
+                # 縮小と膨張
+                kernel = np.ones((kn+2, kn+2), np.uint8)
+                erode = cv2.erode(thresh, kernel)
+                thresh = cv2.dilate(erode, kernel)
+
+                # 輪郭抽出
+                imgEdge, contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+                # 見つかった輪郭をリストに入れる
+                tables = []
+                contours.sort(key=cv2.contourArea, reverse=True)
+                for cnt in contours:
+                    (x, y), radius = cv2.minEnclosingCircle(cnt)
+                    center = (int(x), int(y))
+                    radius = int(radius)
+                    if only_view:
+                        color_image_copy = cv2.circle(color_image_copy, center, radius,
+                                                      Color.purple, 2)
+                    dist = depth.get_distance(int(x), int(y))
+                    table = Table(center, radius, dist, (x, y))
+                    tables.append(table)
 
 
-            for i, _table in enumerate(tables):
-                if only_view:
-                    color_image_copy = cv2.circle(color_image_copy, _table.center, _table.radius,
-                                              (0, 255, 0), 2)
-                color_image_copy = util.put_text(color_image_copy, str(_table.center_float), _table.center, Color.black)
+                # 距離でフィルタ
+                # tables = list(filter(util.distance_filter, tables))
 
+                # tables = list(filter(util.is_table, tables))
+
+                # 半径でフィルタ
+                tables = list(filter(util.radius_filter, tables))
+
+                # 半径が大きい順にソート
+                tables.sort(key=util.return_radius, reverse=True)
+
+                # 大きい3つだけを抽出
+                tables = tables[:3]
+
+                # X座標が小さい順にソート
+                if Config.side:
+                    tables.sort(key=util.return_center_x)
+                else:
+                    tables.sort(key=util.return_center_y)
+
+                if len(tables) == 3 and not only_view:
+                    try:
+                        rtype = table_set.update(tables[0], tables[1], tables[2])
+
+                        if not rtype & 0x01:
+                            # under tableを描画
+                            color_image_copy = util.put_info(color_image_copy, table_set.under)
+
+                        if not rtype & 0x02:
+                            # middle tableを描画
+                            color_image_copy = util.put_info(color_image_copy, table_set.middle)
+
+                        if not rtype & 0x04:
+                            # up tableを描画
+                            color_image_copy = util.put_info(color_image_copy, table_set.up)
+
+                        if rtype != 0:
+                            msg = 'Error:'
+                            if rtype & 0x01:
+                                msg += ' under'
+                            if rtype & 0x02:
+                                msg += ' middle'
+                            if rtype & 0x04:
+                                msg += ' up'
+                            util.put_text(color_image_copy, msg, (300, 446), Color.error)
+                        else:
+                            if time.time() - timer > 3:
+                                ret = util.make_distance_send(table_set)
+                                plan.main([ret.under, ret.middle, ret.up, Config.zone])
+                                os.system("imgcat output/tmp.png")
+                                timer = time.time()
+
+                        if Config.use_moving_average and Config.side:
+                            remaining_times = table_set.get_remaining_times()
+
+                            util.put_text(color_image_copy,
+                                    f"{str(remaining_times[0])}, {str(remaining_times[1])}, {str(remaining_times[2])}",
+                                    (10, 40), Color.white)
+
+                        if not Config.side:
+                            detection = False
+                            print('---------------END DETECTION---------------')
+
+                    except Exception as error:
+                        print(error)
 
             # 画面端で波打つみたいな？
             t_count += 1
