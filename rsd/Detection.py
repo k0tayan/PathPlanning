@@ -2,12 +2,17 @@ import os
 import json
 import numpy as np
 import cv2
+import random
+import string
 
 try:
     from .Config import Config, Path, Field
 except:
     from Config import Config, Path, Field
 
+def randstr(n):
+    random_str = ''.join([random.choice(string.ascii_letters + string.digits) for i in range(n)])
+    return random_str
 
 class ApproximationFunction(Path):
     def __init__(self):
@@ -340,6 +345,22 @@ class Utils(Config, Field, Path):
         c_image = self.put_dist(c_image, table)
         return c_image
 
+    def put_center(self, image, table_set, color):
+        c_image = self.put_text(image, str(table_set.under.center_float), table_set.under.center,
+                                         color)
+        c_image = self.put_text(c_image, str(table_set.middle.center_float), table_set.middle.center,
+                                         color)
+        c_image = self.put_text(c_image, str(table_set.up.center_float), table_set.up.center,
+                                         color)
+        return c_image
+
+    def put_info_by_set(self, image, table_set, center_color=(0, 0, 0)):
+        c_image = self.put_center(image, table_set, center_color)
+        c_image = self.put_info(c_image, table_set.under)
+        c_image = self.put_info(c_image, table_set.middle)
+        c_image = self.put_info(c_image, table_set.up)
+        return c_image
+
     def make_distance_send(self, tables):
         t = T()
         if self.zone:
@@ -369,3 +390,14 @@ class Utils(Config, Field, Path):
         self.settings['rms'] = rms
         f = open(self.path + self.setting_path, 'w')
         json.dump(self.settings, f)
+
+    def save_table_images(self, image, table_set):
+        cv2.imwrite(f'./table_images/{randstr(10)}_under.png',
+                    image[table_set.under.y-table_set.under.radius:table_set.under.y+table_set.under.radius,
+                    table_set.under.x-table_set.under.radius:table_set.under.x+table_set.under.radius])
+        cv2.imwrite(f'./table_images/{randstr(10)}_middle.png',
+                    image[table_set.middle.y-table_set.middle.radius:table_set.middle.y+table_set.middle.radius,
+                    table_set.middle.x-table_set.middle.radius:table_set.middle.x+table_set.middle.radius])
+        cv2.imwrite(f'./table_images/{randstr(10)}_up.png',
+                    image[table_set.up.y - table_set.up.radius:table_set.up.y + table_set.up.radius,
+                    table_set.up.x - table_set.up.radius:table_set.up.x + table_set.up.radius])
