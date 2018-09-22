@@ -16,7 +16,7 @@ class PathPlanning:
     def __init__(self, send=True):
         self.send = send
 
-    def main(self, arg):
+    def main(self, arg, show=False):
         # plot setting
         plt.figure()
         ax = plt.axes()
@@ -88,8 +88,9 @@ class PathPlanning:
         ax.plot(points_x, points_y, '.', color='red')
         ax.plot(points_x, points_y, '-', color='green')
         plt.savefig('output/tmp.png')
+        if show:
+            plt.show()
         plt.close()
-        # plt.show()
 
 
 if __name__ == '__main__':
@@ -98,9 +99,9 @@ if __name__ == '__main__':
         arg = np.array(sys.argv[1:], dtype=np.float)
         arg = np.array(arg, dtype=np.int)
         # arg = list(map(int, sys.argv[1:]))
-        plan.main(arg)
+        plan.main(arg, True)
     else:
         random_move = True
-        plan.main(sys.argv)
+        plan.main(sys.argv, True)
 
 
