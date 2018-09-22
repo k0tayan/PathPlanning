@@ -1,4 +1,4 @@
-robot_width = 1100
+robot_width = 1300
 two_stage_table_red_zone_x, two_stage_table_red_zone_y = 3000, 3500
 two_stage_table_blue_zone_x, two_stage_table_blue_zone_y = 2000, 3500
 two_stage_table_width = 800
