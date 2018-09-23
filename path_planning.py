@@ -1,22 +1,21 @@
 import numpy as np
-import matplotlib
 import matplotlib.pyplot as plt
 import random
 from bottleflip.objects import Robot, Field, Table, Path, Point
 from bottleflip import config
 from tcp.Tcp import Tcp
 import sys
-import socket
-import struct
+import coloredlogs, logging
 
+coloredlogs.install()
 random_move = False
 zone = 'red'
 
 class PathPlanning:
     def __init__(self, send=True):
         self.send = send
-
     def main(self, arg, show=False):
+        logging.info("path_planning start")
         # plot setting
         plt.figure()
         ax = plt.axes()
@@ -34,17 +33,16 @@ class PathPlanning:
             table_under = Table(random.randint(config.move_table_randomize_area_min, config.move_table_randomize_area_max+1), 5500, config.move_table_width, config.robot_width, ax)
             table_middle = Table(random.randint(config.move_table_randomize_area_min, config.move_table_randomize_area_max+1), 6500, config.move_table_width, config.robot_width, ax)
             table_up = Table(random.randint(config.move_table_randomize_area_min, config.move_table_randomize_area_max+1), 7500, config.move_table_width, config.robot_width, ax)
-            print(table_under.x, table_middle.x, table_up.x)
         else:
             table_under = Table(arg[0], 5500, config.move_table_width, config.robot_width, ax)
             table_middle = Table(arg[1], 6500, config.move_table_width, config.robot_width, ax)
             table_up = Table(arg[2], 7500, config.move_table_width, config.robot_width, ax)
-            print(table_under.x, table_middle.x, table_up.x)
             global zone
             if arg[3] == 1:
                 zone = 'red'
             else:
                 zone = 'blue'
+        logging.info(f'\nunder:{(table_under.x, 5500)}\nmiddle:{(table_middle.x, 6500)}\nup:{(table_up.x, 7500)}')
         if zone == 'red':
             two_stage_table = Table(config.two_stage_table_red_zone_x, config.two_stage_table_red_zone_y, config.two_stage_table_width, config.robot_width, ax)
             two_stage_table.set_goal('LEFT')
@@ -61,6 +59,7 @@ class PathPlanning:
 
         # path planning
         points = path.path_planning()
+        print(f"移動距離:{path.get_distance(points)}mm")
         try:
             send_points = list(points)
             flip_points = path.get_flip_point()
@@ -71,12 +70,10 @@ class PathPlanning:
                 tcp.connect()
                 tcp.send(send_points, flip_points)
         except Exception as error:
-            print(error)
+            logging.error(str(error))
         points_x = [point.x for point in points]
         points_y = [point.y for point in points]
-        tmp = [(point.x, point.y) for point in send_points]
-        # print(tmp)
-        # print(path.get_flip_point())
+        logging.debug(f"flip_points:{path.get_flip_point()}")
 
         # plot
         field.plot()
@@ -91,6 +88,7 @@ class PathPlanning:
         if show:
             plt.show()
         plt.close()
+        logging.info("path_planning end")
 
 
 if __name__ == '__main__':
