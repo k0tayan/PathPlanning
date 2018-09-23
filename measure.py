@@ -6,10 +6,10 @@ import csv
 from datetime import datetime as dt
 
 try:
-    from rsd.Detection import Table, Utils, Tables, ApproximationFunction
+    from rsd.detection import Table, Utils, Tables, ApproximationFunction
 except:
-    from .rsd.Detection import Table, Utils, Tables
-from rsd.Config import Config, Color, Path
+    from .rsd.detection import Table, Utils, Tables
+from rsd.config import Config, Color, Path
 
 path = os.path.dirname(os.path.abspath(__file__))
 
@@ -33,7 +33,6 @@ to_csv = []
 unders = []
 middles = []
 ups = []
-background = cv2.imread("background.png", 0)
 
 window_name = 'image'
 cv2.namedWindow(window_name)
@@ -171,8 +170,6 @@ try:
 
             if k == ord('q'):
                 break
-            if k == ord('b'):
-                cv2.imwrite("background.png", thresh)
             if k == ord('i'):
                 if len(tables) == 3:
                     print('Please input real distance')
