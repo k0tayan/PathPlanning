@@ -6,9 +6,11 @@ import random
 import string
 
 try:
-    from .Config import Config, Path, Field
+    from .config import Config, Path, Field
 except:
-    from Config import Config, Path, Field
+    from config import Config, Path, Field
+
+from .sd.label_image import StandingDetection
 
 def randstr(n):
     random_str = ''.join([random.choice(string.ascii_letters + string.digits) for i in range(n)])
@@ -361,6 +363,23 @@ class Utils(Config, Field, Path):
         c_image = self.put_info(c_image, table_set.up)
         return c_image
 
+    def get_under_table_boundingbox(self, image, table_set, y_offset=15):
+        return image[table_set.under.y - table_set.under.radius - y_offset:table_set.under.y + table_set.under.radius + y_offset,
+        table_set.under.x - table_set.under.radius - 10:table_set.under.x + table_set.under.radius + 10]
+
+    def get_middle_table_boundingbox(self, image, table_set, y_offset=15):
+        return image[table_set.middle.y - table_set.middle.radius - y_offset:table_set.middle.y + table_set.middle.radius + y_offset,
+        table_set.middle.x - table_set.middle.radius - 10:table_set.middle.x + table_set.middle.radius + 10]
+
+    def get_up_table_boundingbox(self, image, table_set, y_offset=15):
+        return image[table_set.up.y - table_set.up.radius - y_offset:table_set.up.y + table_set.up.radius + y_offset,
+        table_set.up.x - table_set.up.radius - 10:table_set.up.x + table_set.up.radius + 10]
+
+    def is_table_standing(self, image):
+        sd = StandingDetection()
+        ret = sd.detect(image)
+        return ret == 'stand'
+
     def make_distance_send(self, tables):
         t = T()
         if self.zone:
@@ -391,13 +410,10 @@ class Utils(Config, Field, Path):
         f = open(self.path + self.setting_path, 'w')
         json.dump(self.settings, f)
 
-    def save_table_images(self, image, table_set):
-        cv2.imwrite(f'./table_images/{randstr(10)}_under.png',
-                    image[table_set.under.y-table_set.under.radius:table_set.under.y+table_set.under.radius,
-                    table_set.under.x-table_set.under.radius:table_set.under.x+table_set.under.radius])
-        cv2.imwrite(f'./table_images/{randstr(10)}_middle.png',
-                    image[table_set.middle.y-table_set.middle.radius:table_set.middle.y+table_set.middle.radius,
-                    table_set.middle.x-table_set.middle.radius:table_set.middle.x+table_set.middle.radius])
-        cv2.imwrite(f'./table_images/{randstr(10)}_up.png',
-                    image[table_set.up.y - table_set.up.radius:table_set.up.y + table_set.up.radius,
-                    table_set.up.x - table_set.up.radius:table_set.up.x + table_set.up.radius])
+    def save_table_images(self, image, table_set, y_offset=15):
+        cv2.imwrite(f'./table_images/new/{randstr(10)}_under.jpg',
+                    self.get_under_table_boundingbox(image, table_set, y_offset))
+        cv2.imwrite(f'./table_images/new/{randstr(10)}_middle.jpg',
+                    self.get_middle_table_boundingbox(image, table_set, y_offset))
+        cv2.imwrite(f'./table_images/new/{randstr(10)}_up.jpg',
+                    self.get_up_table_boundingbox(image, table_set, y_offset))
