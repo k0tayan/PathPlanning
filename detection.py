@@ -5,10 +5,10 @@ import cv2
 import time
 
 try:
-    from rsd.Detection import Table, Utils, Tables, ApproximationFunction
+    from rsd.detection import Table, Utils, Tables, ApproximationFunction
 except:
-    from .rsd.Detection import Table, Utils, Tables
-from rsd.Config import Config, Color
+    from .rsd.detection import Table, Utils, Tables
+from rsd.config import Config, Color
 from path_planning import PathPlanning
 
 path = os.path.dirname(os.path.abspath(__file__))
@@ -127,13 +127,32 @@ try:
                 util.put_info_by_set(color_image_copy, table_set, Color.black)
                 if k == ord('r'):
                     print(f'---------------STORED:{sc}---------------')
-                    util.save_table_images(color_image_for_save, table_set)
+                    util.save_table_images(color_image_for_save, table_set, 20)
                     sc += 1
-                if time.time() - timer > 3:
+                """if time.time() - timer > 3:
                     ret = util.make_distance_send(table_set)
                     plan.main([ret.under, ret.middle, ret.up, Config.zone])
                     os.system("imgcat output/tmp.png")
-                    timer = time.time()
+                    timer = time.time()"""
+                if k == ord('d'):
+                    start = time.time()
+                    print('--------START STANDING DETECTION---------')
+                    ret = util.is_table_standing(util.get_under_table_boundingbox(color_image_for_save, table_set))
+                    if ret:
+                        print('under:standing')
+                    else:
+                        print('under:falling down')
+                    ret = util.is_table_standing(util.get_middle_table_boundingbox(color_image_for_save, table_set))
+                    if ret:
+                        print('middle:standing')
+                    else:
+                        print('middle:falling down')
+                    ret = util.is_table_standing(util.get_up_table_boundingbox(color_image_for_save, table_set))
+                    if ret:
+                        print('up:standing')
+                    else:
+                        print('up:falling down')
+                    print(f'--------END[{time.time()-start}]-----------')
 
             if detection:
                 if Config.side:
@@ -241,8 +260,9 @@ try:
                                     (10, 40), Color.white)
 
                         if not Config.side:
-                            detection = False
-                            print('---------------END DETECTION---------------')
+                            if k == ord('n'):
+                                detection = False
+                                print('---------------END DETECTION---------------')
 
                     except Exception as error:
                         print(error)
