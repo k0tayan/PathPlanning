@@ -5,6 +5,7 @@ import cv2
 import random
 import string
 import functools
+import threading
 
 try:
     from .config import Config, Path, Field
@@ -385,7 +386,18 @@ class Utils(Config, Field, Path):
         image_list = [under, middle, up]
         sd = StandingDetection()
         ret = np.array(self.pool.map(sd.detect, image_list))
+        """th1 = threading.Thread(target=sd.detect, name="th1", args=([under]), daemon=True)
+        th1.start()
+        th2 = threading.Thread(target=sd.detect, name="th2", args=([middle]), daemon=True)
+        th2.start()
+        th3 = threading.Thread(target=sd.detect, name="th3", args=([up]), daemon=True)
+        th3.start()"""
+        # th1.join()
+        # th2.join()
+        # th3.join()
+
         return ret == 'stand'
+        # return [True, True, True]
 
     def make_distance_send(self, tables):
         t = T()
@@ -418,8 +430,8 @@ class Utils(Config, Field, Path):
         json.dump(self.settings, f)
 
     def save_table_images(self, image, table_set, y_offset=15):
-        cv2.imwrite(f'./table_images/new/{randstr(10)}_under.jpg',
-                    self.get_under_table_boundingbox(image, table_set, y_offset))
+        # cv2.imwrite(f'./table_images/new/{randstr(10)}_under.jpg',
+        #              self.get_under_table_boundingbox(image, table_set, y_offset))
         cv2.imwrite(f'./table_images/new/{randstr(10)}_middle.jpg',
                     self.get_middle_table_boundingbox(image, table_set, y_offset))
         cv2.imwrite(f'./table_images/new/{randstr(10)}_up.jpg',
