@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import random
 from bottleflip.objects import Robot, Field, Table, Path, Point
 from bottleflip import config
-from tcp.Tcp import Tcp
+from tcp.tcp import Tcp
 import sys
 import coloredlogs, logging
 
@@ -14,6 +14,7 @@ zone = 'red'
 class PathPlanning:
     def __init__(self, send=True):
         self.send = send
+        self.fail = [False, False, False]
     def main(self, arg, show=False):
         logging.info("path_planning start")
         # plot setting
@@ -67,13 +68,14 @@ class PathPlanning:
                 send_points.append(Point(0, 0))
             if self.send:
                 tcp = Tcp(host='192.168.0.14', port=10001)
-                tcp.connect()
-                tcp.send(send_points, flip_points)
+                # tcp.connect()
+                packet = tcp.create_packet(points, flip_points, self.fail)
+                # tcp.send(packet)
         except Exception as error:
             logging.error(str(error))
         points_x = [point.x for point in points]
         points_y = [point.y for point in points]
-        logging.debug(f"flip_points:{path.get_flip_point()}")
+        logging.info(f"flip_points:{path.get_flip_point()}")
 
         # plot
         field.plot()
@@ -90,9 +92,12 @@ class PathPlanning:
         plt.close()
         logging.info("path_planning end")
 
+    def set_fail(self, under, middle, up):
+        self.fail = [under, middle, up]
+
 
 if __name__ == '__main__':
-    plan = PathPlanning(False)
+    plan = PathPlanning(True)
     if len(sys.argv) == 5 or random_move:
         arg = np.array(sys.argv[1:], dtype=np.float)
         arg = np.array(arg, dtype=np.int)
