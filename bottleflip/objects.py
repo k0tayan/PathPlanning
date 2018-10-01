@@ -275,7 +275,6 @@ class Path(FlipPoint):
     def __init__(self, field, robot, two_stage_table, table_under, table_middle, table_up, zone):
         super().__init__(field, robot, table_under, table_middle, table_up)
         self.two_stage_table: Table = two_stage_table
-        self.flip_points = []
         self.zone = zone
 
     def make_mid_point(self, _table1: Table, _table2: Table) -> Point:
@@ -309,6 +308,7 @@ class Path(FlipPoint):
                 raise Exception('kotayan is foolish! More think!')
 
     def make_path(self):
+        self.flip_points = []
         flip_point_index = 0
         path = []
         path.append(self.two_stage_table.goal)
