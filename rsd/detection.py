@@ -4,6 +4,7 @@ import numpy as np
 import cv2
 import random
 import string
+import functools
 
 try:
     from .config import Config, Path, Field
@@ -11,6 +12,7 @@ except:
     from config import Config, Path, Field
 
 from .sd.label_image import StandingDetection
+from pool.mypool import MyPool
 
 def randstr(n):
     random_str = ''.join([random.choice(string.ascii_letters + string.digits) for i in range(n)])
@@ -272,6 +274,7 @@ class Utils(Config, Field, Path):
         self.path = os.path.dirname(os.path.abspath(__file__))
         self.zone = zone
         self.nothing = lambda x: x
+        self.pool = MyPool(3)
 
         data = np.loadtxt(self.field_max_right, delimiter=',')
         self.field_max_right_res = np.polyfit(data[:, 1], data[:, 0], 1)
@@ -375,9 +378,13 @@ class Utils(Config, Field, Path):
         return image[table_set.up.y - table_set.up.radius - y_offset:table_set.up.y + table_set.up.radius + y_offset,
         table_set.up.x - table_set.up.radius - 10:table_set.up.x + table_set.up.radius + 10]
 
-    def is_table_standing(self, image):
+    def is_table_standing(self, color_image_for_save, table_set):
+        under = self.get_under_table_boundingbox(color_image_for_save, table_set)
+        middle = self.get_middle_table_boundingbox(color_image_for_save, table_set)
+        up = self.get_up_table_boundingbox(color_image_for_save, table_set)
+        image_list = [under, middle, up]
         sd = StandingDetection()
-        ret = sd.detect(image)
+        ret = np.array(self.pool.map(sd.detect, image_list))
         return ret == 'stand'
 
     def make_distance_send(self, tables):
@@ -417,3 +424,4 @@ class Utils(Config, Field, Path):
                     self.get_middle_table_boundingbox(image, table_set, y_offset))
         cv2.imwrite(f'./table_images/new/{randstr(10)}_up.jpg',
                     self.get_up_table_boundingbox(image, table_set, y_offset))
+
