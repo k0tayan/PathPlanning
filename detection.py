@@ -137,22 +137,21 @@ try:
                 if k == ord('d'):
                     start = time.time()
                     print('--------START STANDING DETECTION---------')
-                    ret = util.is_table_standing(util.get_under_table_boundingbox(color_image_for_save, table_set))
-                    if ret:
+                    ret = util.is_table_standing(color_image_for_save, table_set)
+                    if ret[0]:
                         print('under:standing')
                     else:
                         print('under:falling down')
-                    ret = util.is_table_standing(util.get_middle_table_boundingbox(color_image_for_save, table_set))
-                    if ret:
+                    if ret[1]:
                         print('middle:standing')
                     else:
                         print('middle:falling down')
-                    ret = util.is_table_standing(util.get_up_table_boundingbox(color_image_for_save, table_set))
-                    if ret:
+                    if ret[2]:
                         print('up:standing')
                     else:
                         print('up:falling down')
                     print(f'--------END[{time.time()-start}]-----------')
+                    plan.set_fail(not ret[0], not ret[1], not ret[2])
 
             if detection:
                 if Config.side:
