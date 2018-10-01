@@ -153,6 +153,9 @@ try:
                     print(f'--------END[{time.time()-start}]-----------')
                     plan.set_fail(not ret[0], not ret[1], not ret[2])
 
+                if k == ord('b'):
+                    detection = True
+
             if detection:
                 if Config.side:
                     if Config.zone:
