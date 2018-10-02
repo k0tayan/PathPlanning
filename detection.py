@@ -4,11 +4,7 @@ import os
 import cv2
 import time
 
-try:
-    from rsd.detection import Table, Utils, Tables, ApproximationFunction
-except:
-    from .rsd.detection import Table, Utils, Tables
-from rsd.config import Config, Color
+from rsd import *
 from path_planning import PathPlanning
 
 path = os.path.dirname(os.path.abspath(__file__))
@@ -29,12 +25,8 @@ pipeline.start(config)
 util = Utils(zone=Config.zone)
 table_set = Tables()
 func = ApproximationFunction()
-plan = PathPlanning(True)
-t_count = 1
-t_list = list(range(1, 30))
-t_list += list(range(30, 0, -1))
+plan = PathPlanning(send=True)
 timer = time.time()
-save = True
 detection = True
 sc = 1
 
@@ -269,14 +261,10 @@ try:
                     except Exception as error:
                         print(error)
 
-            # 画面端で波打つみたいな？
-            t_count += 1
-            if t_count >= len(t_list)-1:
-                t_count = 0
             if Config.zone:
-                color_image_copy = cv2.rectangle(color_image_copy, (0, 0), (width, height), Color.red, t_list[t_count])
+                color_image_copy = cv2.rectangle(color_image_copy, (0, 0), (width, height), Color.red, 20)
             else:
-                color_image_copy = cv2.rectangle(color_image_copy, (0, 0), (width, height), Color.blue, t_list[t_count])
+                color_image_copy = cv2.rectangle(color_image_copy, (0, 0), (width, height), Color.blue, 20)
 
             if Config.side:
                 if Config.zone:
