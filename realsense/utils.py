@@ -10,6 +10,7 @@ import string
 import numpy as np
 import json
 import os
+from keras.models import load_model
 
 def randstr(n):
     random_str = ''.join([random.choice(string.ascii_letters + string.digits) for i in range(n)])
@@ -21,6 +22,7 @@ class Utils(Config, Field, Path):
         self.zone = zone
         self.nothing = lambda x: x
         self.pool = MyPool(3)
+        self.model = load_model('/Users/sho/PycharmProjects/PathPlanning/realsense/sd/green_model2.h5')
 
         data = np.loadtxt(self.field_max_right, delimiter=',')
         self.field_max_right_res = np.polyfit(data[:, 1], data[:, 0], 1)
@@ -124,25 +126,46 @@ class Utils(Config, Field, Path):
         return image[table_set.up.y - table_set.up.radius - y_offset:table_set.up.y + table_set.up.radius + y_offset,
         table_set.up.x - table_set.up.radius - 10:table_set.up.x + table_set.up.radius + 10]
 
-    def is_table_standing(self, color_image_for_save, table_set):
+    def check_standing(self, color_image_for_save, table_set):
+        def resize(im):
+            image = cv2.resize(im, (50, 50))
+            return im
         under = self.get_under_table_boundingbox(color_image_for_save, table_set)
         middle = self.get_middle_table_boundingbox(color_image_for_save, table_set)
         up = self.get_up_table_boundingbox(color_image_for_save, table_set)
         image_list = [under, middle, up]
-        sd = StandingDetection()
-        ret = np.array(self.pool.map(sd.detect, image_list))
-        """th1 = threading.Thread(target=sd.detect, name="th1", args=([under]), daemon=True)
-        th1.start()
-        th2 = threading.Thread(target=sd.detect, name="th2", args=([middle]), daemon=True)
-        th2.start()
-        th3 = threading.Thread(target=sd.detect, name="th3", args=([up]), daemon=True)
-        th3.start()"""
-        # th1.join()
-        # th2.join()
-        # th3.join()
 
-        return ret == 'stand'
-        # return [True, True, True]
+        # keras用
+        image_list = map(resize, image_list)
+
+        table_set.under.standing = self.model.predict_classes(np.array([image_list[0] / 255.]), 100)[0]
+        table_set.middle.standing = self.model.predict_classes(np.array([image_list[1] / 255.]), 100)[0]
+        table_set.up.standing = self.model.predict_classes(np.array([image_list[2] / 255.]), 100)[0]
+
+        # tensorflow
+        # sd = StandingDetection()
+        # ret = np.array(self.pool.map(sd.detect, image_list))
+        # ret = ret == 'stand'
+        # table_set.under.standing = ret[0]
+        # table_set.middle.standing = ret[1]
+        # table_set.up.standing = ret[2]
+
+    def check_led(self, color_image):
+        # スライダーの値から緑色の上限値、下限値を指定
+        upper_green = np.array([64, 0, 251])
+        lower_green = np.array([94, 63, 255])
+        # hsv空間に変換
+        hsv = cv2.cvtColor(color_image, cv2.COLOR_BGR2HSV)
+        # 緑色でマスク
+        mask_green = cv2.inRange(hsv, lower_green, upper_green)
+        # 同じ部分だけ抽出
+        res_green = cv2.bitwise_and(color_image, color_image, mask=mask_green)
+        # グレースケールに変換
+        gray = cv2.cvtColor(res_green, cv2.COLOR_RGB2GRAY)
+        # 二値化
+        ret, thresh = cv2.threshold(gray, 127, 255, cv2.THRESH_BINARY)
+
+        print(thresh == 255)
 
     def make_distance_send(self, tables):
         t = T()
