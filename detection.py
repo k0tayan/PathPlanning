@@ -229,25 +229,18 @@ try:
                 if len(tables) == 3 and not only_view:
                     try:
                         rtype = table_set.update(tables[0], tables[1], tables[2])
+                        # under tableを描画
+                        color_image_copy = util.put_info(color_image_copy, table_set.under)
+                        # middle tableを描画
+                        color_image_copy = util.put_info(color_image_copy, table_set.middle)
+                        # up tableを描画
+                        color_image_copy = util.put_info(color_image_copy, table_set.up)
 
-                        if not rtype & 0x01:
-                            # under tableを描画
-                            color_image_copy = util.put_info(color_image_copy, table_set.under)
-
-                        if not rtype & 0x02:
-                            # middle tableを描画
-                            color_image_copy = util.put_info(color_image_copy, table_set.middle)
-
-                        if not rtype & 0x04:
-                            # up tableを描画
-                            color_image_copy = util.put_info(color_image_copy, table_set.up)
-
-                        else:
-                            if time.time() - timer > 3:
-                                ret = util.make_distance_send(table_set)
-                                plan.main([ret.under, ret.middle, ret.up, Config.zone])
-                                os.system("imgcat output/tmp.png")
-                                timer = time.time()
+                        if time.time() - timer > 3:
+                            ret = util.make_distance_send(table_set)
+                            plan.main([ret.under, ret.middle, ret.up, Config.zone])
+                            os.system("imgcat output/tmp.png")
+                            timer = time.time()
 
                         if Config.use_moving_average and Config.side:
                             remaining_times = table_set.get_remaining_times()
