@@ -23,9 +23,8 @@ import cv2
 import time
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
-file_name = "01.jpg"
-model_file = "/Users/sho/PycharmProjects/PathPlanning/rsd/sd/retrained_graph.pb"
-label_file = "/Users/sho/PycharmProjects/PathPlanning/rsd/sd/retrained_labels.txt"
+model_file = "/Users/sho/PycharmProjects/PathPlanning/realsense/sd/retrained_graph_green.pb"
+label_file = "/Users/sho/PycharmProjects/PathPlanning/realsense/sd/retrained_labels.txt"
 input_height = 299
 input_width = 299
 input_mean = 0
@@ -124,4 +123,4 @@ if __name__ == "__main__":
     size = (int(orgHeight * 0.9), int(orgWidth * 0.9))
     halfImg = cv2.resize(img, size)
     sd = StandingDetection()
-    sd.detect(halfImg)
+    print(sd.detect(halfImg))
