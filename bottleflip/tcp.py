@@ -32,6 +32,8 @@ class Tcp:
     def create_packet(self, points, flip_points, fail):
         points_x = [point.x for point in points]
         points_y = [point.y for point in points]
+        points_x[0] = 0
+        points_y[0] = 0
         x_l = list(map(int, points_x))
         y_l = list(map(int, points_y))
 
