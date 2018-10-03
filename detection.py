@@ -1,10 +1,12 @@
 import pyrealsense2 as rs
+import coloredlogs, logging
 import numpy as np
 import os
 import cv2
 import time
+import sys
 
-from rsd import *
+from realsense import *
 from path_planning import PathPlanning
 
 path = os.path.dirname(os.path.abspath(__file__))
@@ -29,6 +31,7 @@ plan = PathPlanning(send=True)
 timer = time.time()
 detection = True
 sc = 1
+cd_start = sys.maxsize
 
 window_name = 'image'
 cv2.namedWindow(window_name)
@@ -115,39 +118,49 @@ try:
             erode = cv2.erode(thresh, kernel)
             thresh = cv2.dilate(erode, kernel)
 
+            # テーブルの検出が終了していたら
             if not detection:
+                util.check_led(color_image)
                 util.put_info_by_set(color_image_copy, table_set, Color.black)
+                # 画像収集
                 if k == ord('r'):
-                    print(f'---------------STORED:{sc}---------------')
+                    logging.info(f'STORED:{sc}')
                     util.save_table_images(color_image_for_save, table_set, 20)
                     sc += 1
-                """if time.time() - timer > 3:
-                    ret = util.make_distance_send(table_set)
-                    plan.main([ret.under, ret.middle, ret.up, Config.zone])
-                    os.system("imgcat output/tmp.png")
-                    timer = time.time()"""
+
+                # ペットボトルが立っているかの検出
                 if k == ord('d'):
                     start = time.time()
-                    print('--------START STANDING DETECTION---------')
-                    ret = util.is_table_standing(color_image_for_save, table_set)
-                    if ret[0]:
+                    logging.info('START STANDING DETECTION')
+                    util.check_standing(color_image_for_save, table_set)
+                    if table_set.under.standing:
                         print('under:standing')
                     else:
                         print('under:falling down')
-                    if ret[1]:
+                    if table_set.middle.standing:
                         print('middle:standing')
                     else:
                         print('middle:falling down')
-                    if ret[2]:
+                    if table_set.up.standing:
                         print('up:standing')
                     else:
                         print('up:falling down')
-                    print(f'--------END[{time.time()-start}]-----------')
-                    plan.set_fail(not ret[0], not ret[1], not ret[2])
+                    logging.info(f'END[{time.time()-start}]')
+                    plan.set_fail(not table_set.under.standing, not table_set.middle.standing,
+                                  not table_set.up.standing)
 
+                # テーブル検出モード
                 if k == ord('b'):
                     detection = True
 
+                # 3秒おきに送信
+                if time.time() - timer > 3:
+                    ret = util.make_distance_send(table_set)
+                    plan.main([ret.under, ret.middle, ret.up, Config.zone])
+                    # os.system("imgcat output/tmp.png")
+                    timer = time.time()
+
+            # テーブル検出
             if detection:
                 if Config.side:
                     if Config.zone:
@@ -172,7 +185,7 @@ try:
                         color_image_copy[white_index[0]][white_index[1]] = [255, 0, 0]
 
                 # 縮小と膨張
-                kernel = np.ones((kn+2, kn+2), np.uint8)
+                kernel = np.ones((kn + 2, kn + 2), np.uint8)
                 erode = cv2.erode(thresh, kernel)
                 thresh = cv2.dilate(erode, kernel)
 
@@ -192,7 +205,6 @@ try:
                     dist = depth.get_distance(int(x), int(y))
                     table = Table(center, radius, dist, (x, y))
                     tables.append(table)
-
 
                 # 距離でフィルタ
                 # tables = list(filter(util.distance_filter, tables))
@@ -230,15 +242,6 @@ try:
                             # up tableを描画
                             color_image_copy = util.put_info(color_image_copy, table_set.up)
 
-                        if rtype != 0:
-                            msg = 'Error:'
-                            if rtype & 0x01:
-                                msg += ' under'
-                            if rtype & 0x02:
-                                msg += ' middle'
-                            if rtype & 0x04:
-                                msg += ' up'
-                            util.put_text(color_image_copy, msg, (300, 446), Color.error)
                         else:
                             if time.time() - timer > 3:
                                 ret = util.make_distance_send(table_set)
@@ -250,17 +253,24 @@ try:
                             remaining_times = table_set.get_remaining_times()
 
                             util.put_text(color_image_copy,
-                                    f"{str(remaining_times[0])}, {str(remaining_times[1])}, {str(remaining_times[2])}",
-                                    (10, 40), Color.white)
+                                          f"{str(remaining_times[0])}, {str(remaining_times[1])}, {str(remaining_times[2])}",
+                                          (10, 40), Color.white)
 
-                        if not Config.side:
-                            if k == ord('n'):
-                                detection = False
-                                print('---------------END DETECTION---------------')
+                        if k == ord('n'):
+                            detection = False
+                            logging.info('END DETECTION')
+
+                        if k == 32:  # SPACE
+                            cd_start = time.time()
+
+                        if time.time() - cd_start > 20:
+                            detection = False
+                            logging.info('END DETECTION')
 
                     except Exception as error:
                         print(error)
 
+            # 画面枠
             if Config.zone:
                 color_image_copy = cv2.rectangle(color_image_copy, (0, 0), (width, height), Color.red, 20)
             else:
@@ -278,15 +288,23 @@ try:
                     color_image_copy = cv2.line(color_image_copy, (Config.blue_partition_2, 0),
                                                 (Config.blue_partition_2, height), Color.purple, 2)
 
+            # 二値をカラーに
             thresh = cv2.applyColorMap(cv2.convertScaleAbs(thresh), cv2.COLORMAP_BONE)
+            # 結合
             images = np.hstack((color_image_copy, thresh))
+            # ウインドウサイズがでかくなりすぎるので、縮小
             if not Config.side:
-                images = cv2.resize(images, (int(1280*0.65), int(480*0.65)))
+                images = cv2.resize(images, (int(1280 * 0.65), int(480 * 0.65)))
+            # 表示
             cv2.imshow(window_name, images)
 
+            # 終了
             if k == ord('q'):
+                logging.info('QUIT DETECTION')
                 break
-            if k == ord('s'):  # パラメータの保存
+            # パラメータの保存
+            if k == ord('s'):
+                logging.info('SAVED PARAMETER')
                 util.save_param(h, s, v, lv, th, kn, remove_side)
         except Exception as error:
             if str(error) == "wait_for_frames cannot be called before start()":
