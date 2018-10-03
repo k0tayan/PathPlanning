@@ -31,3 +31,4 @@ class Table(Config):
         self.center_float = (x, y)
         self.x = center[0]
         self.y = center[1]
+        self.standing = None
