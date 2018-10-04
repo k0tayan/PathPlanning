@@ -11,12 +11,8 @@ from path_planning import PathPlanning
 
 path = os.path.dirname(os.path.abspath(__file__))
 
-if Config.side:
-    width = 640
-    height = 480
-else:
-    width = 1280
-    height = 720
+width = 1280
+height = 720
 only_view = False
 mode = Config.mode
 pipeline = rs.pipeline()
@@ -24,7 +20,7 @@ config = rs.config()
 config.enable_stream(rs.stream.depth, width, height, rs.format.z16, 30)
 config.enable_stream(rs.stream.color, width, height, rs.format.bgr8, 30)
 pipeline.start(config)
-util = Utils(zone=Config.zone)
+util = Utils()
 table_set = Tables()
 func = ApproximationFunction()
 plan = PathPlanning(send=True)
@@ -55,7 +51,7 @@ cv2.setTrackbarPos('threshold', window_name, util.settings['th'])
 cv2.setTrackbarPos('kernel', window_name, util.settings['k'])
 cv2.setTrackbarPos('remove_side', window_name, util.settings['rms'])
 cv2.setTrackbarPos('zone', window_name, Config.zone)
-print('---------------START DETECTION---------------')
+logging.info('START DETECTION')
 
 try:
     while True:
@@ -133,18 +129,6 @@ try:
                     start = time.time()
                     logging.info('START STANDING DETECTION')
                     util.check_standing(color_image_for_save, table_set)
-                    if table_set.under.standing:
-                        print('under:standing')
-                    else:
-                        print('under:falling down')
-                    if table_set.middle.standing:
-                        print('middle:standing')
-                    else:
-                        print('middle:falling down')
-                    if table_set.up.standing:
-                        print('up:standing')
-                    else:
-                        print('up:falling down')
                     logging.info(f'END[{time.time()-start}]')
                     plan.set_fail(not table_set.under.standing, not table_set.middle.standing,
                                   not table_set.up.standing)
@@ -154,27 +138,17 @@ try:
                     detection = True
 
                 # 3秒おきに送信
-                if time.time() - timer > 3:
-                    ret = util.make_distance_send(table_set)
-                    plan.main([ret.under, ret.middle, ret.up, Config.zone])
-                    # os.system("imgcat output/tmp.png")
-                    timer = time.time()
+                # if time.time() - timer > 3:
+                #     ret = util.make_distance_send(table_set)
+                #     plan.main([ret.under, ret.middle, ret.up, Config.zone])
+                #    # os.system("imgcat output/tmp.png")
+                #    timer = time.time()
 
             # テーブル検出
             if detection:
-                if Config.side:
-                    if Config.zone:
-                        pass
-                    else:
-                        # 左を捨てる
-                        thresh[:, :45] = 0
-
-                        # 下を捨てる
-                        thresh[429:, :] = 0
-                else:
-                    thresh[:horizon, :] = 0
-                    # thresh[:, 1165:] = 0
-                    # thresh[336:, 1000:] = 0
+                thresh[:horizon, :] = 0
+                # thresh[:, 1165:] = 0
+                # thresh[336:, 1000:] = 0
 
                 white_indexes = list(np.where(thresh > 150))
 
@@ -220,11 +194,8 @@ try:
                 # 大きい3つだけを抽出
                 tables = tables[:3]
 
-                # X座標が小さい順にソート
-                if Config.side:
-                    tables.sort(key=util.return_center_x)
-                else:
-                    tables.sort(key=util.return_center_y)
+                # Y座標が小さい順にソート
+                tables.sort(key=util.return_center_y)
 
                 if len(tables) == 3 and not only_view:
                     try:
@@ -241,13 +212,6 @@ try:
                             plan.main([ret.under, ret.middle, ret.up, Config.zone])
                             os.system("imgcat output/tmp.png")
                             timer = time.time()
-
-                        if Config.use_moving_average and Config.side:
-                            remaining_times = table_set.get_remaining_times()
-
-                            util.put_text(color_image_copy,
-                                          f"{str(remaining_times[0])}, {str(remaining_times[1])}, {str(remaining_times[2])}",
-                                          (10, 40), Color.white)
 
                         if k == ord('n'):
                             detection = False
@@ -269,25 +233,12 @@ try:
             else:
                 color_image_copy = cv2.rectangle(color_image_copy, (0, 0), (width, height), Color.blue, 20)
 
-            if Config.side:
-                if Config.zone:
-                    pass
-                else:
-                    # partition_1の描画
-                    color_image_copy = cv2.line(color_image_copy, (Config.blue_partition_1, 0),
-                                                (Config.blue_partition_1, height), Color.purple, 2)
-
-                    # partition_2の描画
-                    color_image_copy = cv2.line(color_image_copy, (Config.blue_partition_2, 0),
-                                                (Config.blue_partition_2, height), Color.purple, 2)
-
             # 二値をカラーに
             thresh = cv2.applyColorMap(cv2.convertScaleAbs(thresh), cv2.COLORMAP_BONE)
             # 結合
             images = np.hstack((color_image_copy, thresh))
             # ウインドウサイズがでかくなりすぎるので、縮小
-            if not Config.side:
-                images = cv2.resize(images, (int(1280 * 0.65), int(480 * 0.65)))
+            images = cv2.resize(images, (int(1280 * 0.65), int(480 * 0.65)))
             # 表示
             cv2.imshow(window_name, images)
 

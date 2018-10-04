@@ -3,6 +3,7 @@ from .config import *
 from .objects import *
 import functools
 import threading
+import coloredlogs, logging
 import cv2
 from pool.mypool import MyPool
 import random
@@ -17,12 +18,11 @@ def randstr(n):
     return random_str
 
 class Utils(Config, Field, Path):
-    def __init__(self, zone):
+    def __init__(self):
         self.path = os.path.dirname(os.path.abspath(__file__))
-        self.zone = zone
         self.nothing = lambda x: x
         self.pool = MyPool(3)
-        self.model = load_model('/Users/sho/PycharmProjects/PathPlanning/realsense/sd/green_model2.h5')
+        self.model = load_model(self.keras_green_model)
 
         data = np.loadtxt(self.field_max_right, delimiter=',')
         self.field_max_right_res = np.polyfit(data[:, 1], data[:, 0], 1)
@@ -52,16 +52,10 @@ class Utils(Config, Field, Path):
         return a.radius
 
     def radius_filter(self, a):
-        if self.side:
-            return self.radius_filter_side[0] > a.radius > self.radius_filter_side[1]
-        else:
-            return self.radius_filter_front[0] > a.radius > self.radius_filter_front[1]
+        return self.radius_filter_front[0] > a.radius > self.radius_filter_front[1]
 
     def distance_filter(self, a):
-        if self.side:
-            return 2 < a.dist < 6.5
-        else:
-            return self.distance_filter_front[0] < a.dist < self.distance_filter_front[1]
+        return self.distance_filter_front[0] < a.dist < self.distance_filter_front[1]
 
     def put_text(self, img: object, text: object, pos: object, color: object, size: object = 1, weight: object = 1) -> object:
         return cv2.putText(img, text, tuple(pos), cv2.FONT_HERSHEY_TRIPLEX, size, color, weight, cv2.LINE_AA)
@@ -116,39 +110,45 @@ class Utils(Config, Field, Path):
 
     def get_under_table_boundingbox(self, image, table_set, y_offset=15):
         return image[table_set.under.y - table_set.under.radius - y_offset:table_set.under.y + table_set.under.radius + y_offset,
-        table_set.under.x - table_set.under.radius - 10:table_set.under.x + table_set.under.radius + 10]
+        table_set.under.x - table_set.under.radius - 20:table_set.under.x + table_set.under.radius + 20]
 
     def get_middle_table_boundingbox(self, image, table_set, y_offset=15):
         return image[table_set.middle.y - table_set.middle.radius - y_offset:table_set.middle.y + table_set.middle.radius + y_offset,
-        table_set.middle.x - table_set.middle.radius - 10:table_set.middle.x + table_set.middle.radius + 10]
+        table_set.middle.x - table_set.middle.radius - 20:table_set.middle.x + table_set.middle.radius + 20]
 
     def get_up_table_boundingbox(self, image, table_set, y_offset=15):
         return image[table_set.up.y - table_set.up.radius - y_offset:table_set.up.y + table_set.up.radius + y_offset,
-        table_set.up.x - table_set.up.radius - 10:table_set.up.x + table_set.up.radius + 10]
+        table_set.up.x - table_set.up.radius - 20:table_set.up.x + table_set.up.radius + 20]
 
-    def check_standing(self, color_image_for_save, table_set):
+    def check_by_keras(self, table_set, image_list):
+        # keras
         def resize(im):
-            image = cv2.resize(im, (50, 50))
+            im = cv2.resize(im, (50, 50))
             return im
-        under = self.get_under_table_boundingbox(color_image_for_save, table_set)
-        middle = self.get_middle_table_boundingbox(color_image_for_save, table_set)
-        up = self.get_up_table_boundingbox(color_image_for_save, table_set)
-        image_list = [under, middle, up]
-
-        # keras用
-        image_list = map(resize, image_list)
+        image_list = list(map(resize, image_list))
 
         table_set.under.standing = self.model.predict_classes(np.array([image_list[0] / 255.]), 100)[0]
         table_set.middle.standing = self.model.predict_classes(np.array([image_list[1] / 255.]), 100)[0]
         table_set.up.standing = self.model.predict_classes(np.array([image_list[2] / 255.]), 100)[0]
 
+    def check_by_tensorflow(self, table_set, image_list):
         # tensorflow
-        # sd = StandingDetection()
-        # ret = np.array(self.pool.map(sd.detect, image_list))
-        # ret = ret == 'stand'
-        # table_set.under.standing = ret[0]
-        # table_set.middle.standing = ret[1]
-        # table_set.up.standing = ret[2]
+        sd = StandingDetection()
+        ret = np.array(list(map(sd.detect, image_list)))
+        ret = ret == 'stand'
+        table_set.under.standing = ret[0]
+        table_set.middle.standing = ret[1]
+        table_set.up.standing = ret[2]
+
+    def check_standing(self, color_image_for_save, table_set):
+        under = self.get_under_table_boundingbox(color_image_for_save, table_set, 10)
+        middle = self.get_middle_table_boundingbox(color_image_for_save, table_set, 10)
+        up = self.get_up_table_boundingbox(color_image_for_save, table_set, 10)
+        image_list = [under, middle, up]
+        if  self.tensorflow:
+            self.check_by_tensorflow(table_set, image_list)
+        else:
+            self.check_by_keras(table_set, image_list)
 
     def check_led(self, color_image):
         # スライダーの値から緑色の上限値、下限値を指定
@@ -165,7 +165,27 @@ class Utils(Config, Field, Path):
         # 二値化
         ret, thresh = cv2.threshold(gray, 127, 255, cv2.THRESH_BINARY)
 
-        print(thresh == 255)
+        # print(np.sum(thresh == 255))
+
+    def log_standing(self, table_set):
+        if table_set.under.standing:
+            logging.info('under:standing')
+        elif table_set.under.standing is None:
+            logging.error('Not detected')
+        else:
+            logging.info('under:falling down')
+        if table_set.middle.standing:
+            logging.info('middle:standing')
+        elif table_set.middle.standing is None:
+            logging.error('Not detected')
+        else:
+            print('middle:falling down')
+        if table_set.up.standing:
+            logging.info('up:standing')
+        elif table_set.up.standing is None:
+            logging.error('Not detected')
+        else:
+            logging.info('up:falling down')
 
     def make_distance_send(self, tables):
         t = T()
@@ -198,9 +218,9 @@ class Utils(Config, Field, Path):
         json.dump(self.settings, f)
 
     def save_table_images(self, image, table_set, y_offset=15):
-        # cv2.imwrite(f'./table_images/new/{randstr(10)}_under.jpg',
-        #              self.get_under_table_boundingbox(image, table_set, y_offset))
-        cv2.imwrite(f'./table_images/new/{randstr(10)}_middle.jpg',
-                    self.get_middle_table_boundingbox(image, table_set, y_offset))
-        cv2.imwrite(f'./table_images/new/{randstr(10)}_up.jpg',
-                    self.get_up_table_boundingbox(image, table_set, y_offset))
+        cv2.imwrite(f'./table_images/new/{randstr(10)}_under.jpg',
+                      self.get_under_table_boundingbox(image, table_set, y_offset))
+        # cv2.imwrite(f'./table_images/new/{randstr(10)}_middle.jpg',
+        #            self.get_middle_table_boundingbox(image, table_set, y_offset))
+        #cv2.imwrite(f'./table_images/new/{randstr(10)}_up.jpg',
+        #            self.get_up_table_boundingbox(image, table_set, y_offset))
