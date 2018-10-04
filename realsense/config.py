@@ -1,3 +1,4 @@
+import os
 class Config:
     zone = 1  # zone=1 赤ゾーン zone=0 青ゾーン
     mode = 1  # mode=0: 深度 mode=1 中心座標
@@ -16,19 +17,22 @@ class Config:
 
 
 class Path:
-    blue_under = '/Users/sho/PycharmProjects/PathPlanning/measurements/blue/under.csv'
-    blue_middle = '/Users/sho/PycharmProjects/PathPlanning/measurements/blue/middle.csv'
-    blue_up = '/Users/sho/PycharmProjects/PathPlanning/measurements/blue/up.csv'
+    dir = os.getcwd()
+    blue_under = dir + '/measurements/blue/under.csv'
+    blue_middle = dir + '/measurements/blue/middle.csv'
+    blue_up = dir + '/measurements/blue/up.csv'
 
     red_under = None
     red_middle = None
     red_up = None
 
-    under_front = '/Users/sho/PycharmProjects/PathPlanning/measurements/front/under_front.csv'
-    middle_front = '/Users/sho/PycharmProjects/PathPlanning/measurements/front/middle_front.csv'
-    up_front = '/Users/sho/PycharmProjects/PathPlanning/measurements/front/up_front.csv'
+    under_front = dir + '/measurements/front/under_front.csv'
+    middle_front = dir + '/measurements/front/middle_front.csv'
+    up_front = dir + '/measurements/front/up_front.csv'
 
-    field_max_right = '/Users/sho/PycharmProjects/PathPlanning/measurements/front/field_max_right.csv'
+    field_max_right = dir + '/measurements/front/field_max_right.csv'
+
+    keras_green_model = dir + '/realsense/sd/green_model2.h5'
 
 
 class Field:
