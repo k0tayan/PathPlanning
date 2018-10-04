@@ -6,19 +6,16 @@ import csv
 from datetime import datetime as dt
 
 try:
-    from rsd.detection import Table, Utils, Tables, ApproximationFunction
+    from realsense.detection import Table, Utils, Tables, ApproximationFunction
 except:
-    from .rsd.detection import Table, Utils, Tables
-from rsd.config import Config, Color, Path
+    from .realsense.detection import Table, Utils, Tables
+from realsense.config import Config, Color, Path
 
 path = os.path.dirname(os.path.abspath(__file__))
 
-if Config.side:
-    width = 640
-    height = 480
-else:
-    width = 1280
-    height = 720
+
+width = 1280
+height = 720
 only_view = True
 mode = Config.mode
 pipeline = rs.pipeline()
@@ -141,10 +138,8 @@ try:
             # 大きい3つだけを抽出
             tables = tables[:3]
 
-            if Config.side: # X座標が小さい順にソート
-                tables.sort(key=util.return_center_x)
-            else: # Y座標が小さい順にそーと
-                tables.sort(key=util.return_center_y)
+            # Y座標が小さい順にそーと
+            tables.sort(key=util.return_center_y)
 
             for i, _table in enumerate(tables):
                 if i == 0:
