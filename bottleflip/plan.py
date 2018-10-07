@@ -273,7 +273,6 @@ class Path(FlipPoint):
         self.make_simple_flip_points(self.zone)
         points_2 = self.make_path()
         distance_2 = self.get_distance(points_2)
-        print(f"simplified:{distance_2}")
         if distance_1 < distance_2:
             return points_1
         else:
