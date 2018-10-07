@@ -11,8 +11,9 @@ from path_planning import PathPlanning
 
 path = os.path.dirname(os.path.abspath(__file__))
 
-width = 1280
-height = 720
+send = True
+width = Config.width
+height = Config.height
 only_view = False
 mode = Config.mode
 pipeline = rs.pipeline()
@@ -23,15 +24,17 @@ pipeline.start(config)
 util = Utils()
 table_set = Tables()
 func = ApproximationFunction()
-plan = PathPlanning(send=True)
+plan = PathPlanning(send=send)
 timer = time.time()
 detection = True
 sc = 1
 cd_start = sys.maxsize
 
-window_name = 'image'
-cv2.namedWindow(window_name)
+window_name = 'PathPlanning by @kotayan_0415'
+path_window_name = 'Path'
+cv2.namedWindow(window_name, cv2.WINDOW_AUTOSIZE)
 cv2.moveWindow(window_name, 450, 0, )
+cv2.namedWindow(path_window_name, cv2.WINDOW_NORMAL)
 cv2.createTrackbar('H', window_name, 0, 255, util.nothing)
 cv2.createTrackbar('S', window_name, 0, 255, util.nothing)
 cv2.createTrackbar('V', window_name, 0, 255, util.nothing)
@@ -90,10 +93,13 @@ try:
             # 画像保存用にcolor_imageをコピーした変数を作成
             color_image_for_save = color_image.copy()
 
-            pts = np.array([[remove_side * 50, 0], [width, 0], [width, height]])
+            for_check = color_image.copy()
+
             if Config.zone:
+                pts = np.array([[0, 350], [100, 350], [0, height]])
                 color_image_copy = cv2.fillPoly(color_image_copy, pts=[pts], color=Color.red)
             else:
+                pts = np.array([[remove_side * 50, 0], [width, 0], [width, height]])
                 color_image_copy = cv2.fillPoly(color_image_copy, pts=[pts], color=Color.blue)
 
             # ブラーをかける
@@ -116,8 +122,8 @@ try:
 
             # テーブルの検出が終了していたら
             if not detection:
-                util.check_led(color_image)
                 util.put_info_by_set(color_image_copy, table_set, Color.black)
+                util.put_standing_detection_result(color_image_copy, table_set)
                 # 画像収集
                 if k == ord('r'):
                     logging.info(f'STORED:{sc}')
@@ -125,24 +131,29 @@ try:
                     sc += 1
 
                 # ペットボトルが立っているかの検出
-                if k == ord('d'):
-                    start = time.time()
-                    logging.info('START STANDING DETECTION')
-                    util.check_standing(color_image_for_save, table_set)
-                    logging.info(f'END[{time.time()-start}]')
-                    plan.set_fail(not table_set.under.standing, not table_set.middle.standing,
-                                  not table_set.up.standing)
+                sum = util.check_led(for_check)
+                color_image_copy = util.put_text(
+                    img=color_image_copy, text=str(sum), pos=(width-100, height-50), color=Color.black)
+                if sum > 500 or k == ord('d'):
+                    if not util.processing_standing_detection:
+                        util.check_standing(for_check, table_set)
+
+                if table_set.up.standing is not None:
+                    util.processing_standing_detection = False
+                    # util.log_standing(table_set)
+                    # 立っていたらTrue、立っていなかったらFalse
+                    plan.set_result(table_set.under.standing, table_set.middle.standing,
+                                 table_set.up.standing)
 
                 # テーブル検出モード
                 if k == ord('b'):
                     detection = True
 
                 # 3秒おきに送信
-                # if time.time() - timer > 3:
-                #     ret = util.make_distance_send(table_set)
-                #     plan.main([ret.under, ret.middle, ret.up, Config.zone])
-                #    # os.system("imgcat output/tmp.png")
-                #    timer = time.time()
+                if time.time() - timer > 3:
+                     ret = util.make_distance_send(table_set)
+                     plan.main([ret.under, ret.middle, ret.up, Config.zone])
+                     timer = time.time()
 
             # テーブル検出
             if detection:
@@ -154,9 +165,14 @@ try:
 
                 for white_index in zip(white_indexes[0], white_indexes[1]):
                     dist = np_image[white_index[0]][white_index[1]]
-                    if (white_index[1], white_index[0]) > (1000, 300) and dist > 2800 + white_index[0]:
-                        thresh[white_index[0]][white_index[1]] = 0
-                        color_image_copy[white_index[0]][white_index[1]] = [255, 0, 0]
+                    if not Config.zone:
+                        if (white_index[1], white_index[0]) > (1000, 300) and dist > 2800 + white_index[0]:
+                            thresh[white_index[0]][white_index[1]] = 0
+                            color_image_copy[white_index[0]][white_index[1]] = [255, 0, 0]
+                    else:
+                        if (white_index[1], white_index[0]) < (300, 300) and dist > 2700 + white_index[0]:
+                            thresh[white_index[0]][white_index[1]] = 0
+                            color_image_copy[white_index[0]][white_index[1]] = [255, 0, 0]
 
                 # 縮小と膨張
                 kernel = np.ones((kn + 2, kn + 2), np.uint8)
@@ -210,7 +226,11 @@ try:
                         if time.time() - timer > 3:
                             ret = util.make_distance_send(table_set)
                             plan.main([ret.under, ret.middle, ret.up, Config.zone])
-                            os.system("imgcat output/tmp.png")
+                            path_view = cv2.imread("output/tmp.png")
+                            path_height = path_view.shape[0]
+                            path_width = path_view.shape[1]
+                            path_view = cv2.resize(path_view, (int(path_width / 2), int(path_height / 2)))
+                            cv2.imshow(path_window_name, path_view)
                             timer = time.time()
 
                         if k == ord('n'):
@@ -220,12 +240,12 @@ try:
                         if k == 32:  # SPACE
                             cd_start = time.time()
 
-                        if time.time() - cd_start > 20:
+                        if time.time() - cd_start > 10:
                             detection = False
                             logging.info('END DETECTION')
 
                     except Exception as error:
-                        print(error)
+                        logging.error(error)
 
             # 画面枠
             if Config.zone:
@@ -258,7 +278,7 @@ try:
                 pipeline.stop()
                 exit()
             else:
-                print(error)
+                logging.error(error)
 except:
     pass
 finally:
