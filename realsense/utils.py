@@ -11,11 +11,14 @@ import string
 import numpy as np
 import json
 import os
+import time
 from keras.models import load_model
+
 
 def randstr(n):
     random_str = ''.join([random.choice(string.ascii_letters + string.digits) for i in range(n)])
     return random_str
+
 
 class Utils(Config, Field, Path):
     def __init__(self):
@@ -23,6 +26,8 @@ class Utils(Config, Field, Path):
         self.nothing = lambda x: x
         self.pool = MyPool(3)
         self.model = load_model(self.keras_green_model)
+        self.log = True
+        self.processing_standing_detection = False
 
         data = np.loadtxt(self.field_max_right, delimiter=',')
         self.field_max_right_res = np.polyfit(data[:, 1], data[:, 0], 1)
@@ -30,7 +35,7 @@ class Utils(Config, Field, Path):
             f = open(self.path + self.setting_path, 'r')
             self.settings = json.load(f)
         except:
-            self.settings = {'h': 180, 's': 45, 'v': 255, 'th': 210, 'k': 10, 'rms':9}
+            self.settings = {'h': 180, 's': 45, 'v': 255, 'th': 210, 'k': 10, 'rms': 9}
 
     def is_over_field_max_right(self, table):
         x = np.poly1d(self.field_max_right_res)(table.y)
@@ -57,7 +62,8 @@ class Utils(Config, Field, Path):
     def distance_filter(self, a):
         return self.distance_filter_front[0] < a.dist < self.distance_filter_front[1]
 
-    def put_text(self, img: object, text: object, pos: object, color: object, size: object = 1, weight: object = 1) -> object:
+    def put_text(self, img: object, text: object, pos: object, color: object, size: object = 1,
+                 weight: object = 1) -> object:
         return cv2.putText(img, text, tuple(pos), cv2.FONT_HERSHEY_TRIPLEX, size, color, weight, cv2.LINE_AA)
 
     def rectangle(self, image, center, radius, weight=2):
@@ -83,48 +89,83 @@ class Utils(Config, Field, Path):
 
     def put_dist(self, image, table):
         return self.put_text(image, str(table.dist),
-                (lambda l: (l[0], l[1] + 100))(list(table.center)), (0, 0, 0), size=1, weight=2)
+                             (lambda l: (l[0], l[1] + 100))(list(table.center)), (0, 0, 0), size=1, weight=2)
 
     def put_info(self, image, table: Table):
         c_image = self.rectangle(image, table.center,
-                       table.radius)
+                                 table.radius)
         c_image = self.put_type_name(c_image, table)
         c_image = self.put_dist(c_image, table)
         return c_image
 
     def put_center(self, image, table_set, color):
         c_image = self.put_text(image, str(table_set.under.center_float), table_set.under.center,
-                                         color)
+                                color)
         c_image = self.put_text(c_image, str(table_set.middle.center_float), table_set.middle.center,
-                                         color)
+                                color)
         c_image = self.put_text(c_image, str(table_set.up.center_float), table_set.up.center,
-                                         color)
+                                color)
         return c_image
 
-    def put_info_by_set(self, image, table_set, center_color=(0, 0, 0)):
-        c_image = self.put_center(image, table_set, center_color)
+    def put_info_by_set(self, c_image, table_set, center_color=(0, 0, 0)):
+        # c_image = self.put_center(image, table_set, center_color)
         c_image = self.put_info(c_image, table_set.under)
         c_image = self.put_info(c_image, table_set.middle)
         c_image = self.put_info(c_image, table_set.up)
+        c_image = self.put_text(c_image, "Standing Dt", (10, self.height - 20), center_color, size=2, weight=2)
         return c_image
 
     def get_under_table_boundingbox(self, image, table_set, y_offset=15):
-        return image[table_set.under.y - table_set.under.radius - y_offset:table_set.under.y + table_set.under.radius + y_offset,
-        table_set.under.x - table_set.under.radius - 20:table_set.under.x + table_set.under.radius + 20]
+        ys = table_set.under.y - table_set.under.radius - y_offset
+        if ys < 0:
+            ys = 0
+        yg = table_set.under.y + table_set.under.radius
+        if yg > self.height:
+            yg = self.height
+        xs = table_set.under.x - table_set.under.radius - 20
+        if xs < 0:
+            xs = 0
+        xg = table_set.under.x + table_set.under.radius + 20
+        if xg > self.width:
+            xg = self.width
+        return image[ys:yg, xs:xg]
 
     def get_middle_table_boundingbox(self, image, table_set, y_offset=15):
-        return image[table_set.middle.y - table_set.middle.radius - y_offset:table_set.middle.y + table_set.middle.radius + y_offset,
-        table_set.middle.x - table_set.middle.radius - 20:table_set.middle.x + table_set.middle.radius + 20]
+        ys = table_set.middle.y - table_set.middle.radius - y_offset
+        if ys < 0:
+            ys = 0
+        yg = table_set.middle.y + table_set.middle.radius
+        if yg > self.height:
+            yg = self.height
+        xs = table_set.middle.x - table_set.middle.radius - 20
+        if xs < 0:
+            xs = 0
+        xg = table_set.middle.x + table_set.middle.radius + 20
+        if xg > self.width:
+            xg = self.width
+        return image[ys:yg, xs:xg]
 
     def get_up_table_boundingbox(self, image, table_set, y_offset=15):
-        return image[table_set.up.y - table_set.up.radius - y_offset:table_set.up.y + table_set.up.radius + y_offset,
-        table_set.up.x - table_set.up.radius - 20:table_set.up.x + table_set.up.radius + 20]
+        ys = table_set.up.y - table_set.up.radius - y_offset
+        if ys < 0:
+            ys = 0
+        yg = table_set.up.y + table_set.up.radius + y_offset
+        if yg > self.height:
+            yg = self.height
+        xs = table_set.up.x - table_set.up.radius - 20
+        if xs < 0:
+            xs = 0
+        xg = table_set.up.x + table_set.up.radius + 20
+        if xg > self.width:
+            xg = self.width
+        return image[ys:yg, xs:xg]
 
     def check_by_keras(self, table_set, image_list):
         # keras
         def resize(im):
             im = cv2.resize(im, (50, 50))
             return im
+
         image_list = list(map(resize, image_list))
 
         table_set.under.standing = self.model.predict_classes(np.array([image_list[0] / 255.]), 100)[0]
@@ -141,51 +182,76 @@ class Utils(Config, Field, Path):
         table_set.up.standing = ret[2]
 
     def check_standing(self, color_image_for_save, table_set):
-        under = self.get_under_table_boundingbox(color_image_for_save, table_set, 10)
-        middle = self.get_middle_table_boundingbox(color_image_for_save, table_set, 10)
-        up = self.get_up_table_boundingbox(color_image_for_save, table_set, 10)
-        image_list = [under, middle, up]
-        if  self.tensorflow:
-            self.check_by_tensorflow(table_set, image_list)
+        self.log = True
+        self.processing_standing_detection = True
+        logging.info('START STANDING DETECTION')
+        under = self.get_under_table_boundingbox(color_image_for_save, table_set, 15)
+        middle = self.get_middle_table_boundingbox(color_image_for_save, table_set, 15)
+        up = self.get_up_table_boundingbox(color_image_for_save, table_set, 15)
+        if self.tensorflow:
+            image_list = [[under, 0], [middle, 1], [up, 2]]
+            thread = threading.Thread(target=self.check_by_tensorflow, args=(table_set, image_list), daemon=True, )
+            # self.check_by_tensorflow(table_set, image_list)
+            thread.start()
         else:
+            image_list = [under, middle, up]
             self.check_by_keras(table_set, image_list)
 
-    def check_led(self, color_image):
+    def check_led(self, for_check):
+        image = for_check[400:, :]
+        image = cv2.medianBlur(image, 5)
         # スライダーの値から緑色の上限値、下限値を指定
-        upper_green = np.array([64, 0, 251])
-        lower_green = np.array([94, 63, 255])
+        lower_green = np.array([64, 0, 251])
+        upper_green = np.array([94, 63, 255])
         # hsv空間に変換
-        hsv = cv2.cvtColor(color_image, cv2.COLOR_BGR2HSV)
+        hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
         # 緑色でマスク
         mask_green = cv2.inRange(hsv, lower_green, upper_green)
         # 同じ部分だけ抽出
-        res_green = cv2.bitwise_and(color_image, color_image, mask=mask_green)
+        res_green = cv2.bitwise_and(image, image, mask=mask_green)
         # グレースケールに変換
         gray = cv2.cvtColor(res_green, cv2.COLOR_RGB2GRAY)
         # 二値化
-        ret, thresh = cv2.threshold(gray, 127, 255, cv2.THRESH_BINARY)
+        ret, thresh = cv2.threshold(gray, 150, 255, cv2.THRESH_BINARY)
 
-        # print(np.sum(thresh == 255))
+        """# 縮小と膨張
+        kernel = np.ones((10, 10), np.uint8)
+        erode = cv2.erode(thresh, kernel)
+        thresh = cv2.dilate(erode, kernel)"""
+
+        sum = np.sum(thresh == 255)
+        return sum
 
     def log_standing(self, table_set):
+        if self.log:
+            logging.info('Bottle status')
+            if table_set.under.standing:
+                print('under:standing')
+            elif table_set.under.standing is None:
+                logging.error('Not detected')
+            else:
+                print('under:falling down')
+            if table_set.middle.standing:
+                print('middle:standing')
+            elif table_set.middle.standing is None:
+                logging.error('Not detected')
+            else:
+                print('middle:falling down')
+            if table_set.up.standing:
+                print('up:standing')
+            elif table_set.up.standing is None:
+                logging.error('Not detected')
+            else:
+                print('up:falling down')
+            self.log = False
+
+    def put_standing_detection_result(self, image, table_set):
         if table_set.under.standing:
-            logging.info('under:standing')
-        elif table_set.under.standing is None:
-            logging.error('Not detected')
-        else:
-            logging.info('under:falling down')
+            cv2.circle(image, table_set.under.center, table_set.under.radius + 10, (0, 252, 124), 3)
         if table_set.middle.standing:
-            logging.info('middle:standing')
-        elif table_set.middle.standing is None:
-            logging.error('Not detected')
-        else:
-            print('middle:falling down')
+            cv2.circle(image, table_set.middle.center, table_set.middle.radius + 10, (0, 252, 124), 3)
         if table_set.up.standing:
-            logging.info('up:standing')
-        elif table_set.up.standing is None:
-            logging.error('Not detected')
-        else:
-            logging.info('up:falling down')
+            cv2.circle(image, table_set.up.center, table_set.up.radius + 10, (0, 252, 124), 3)
 
     def make_distance_send(self, tables):
         t = T()
@@ -218,9 +284,9 @@ class Utils(Config, Field, Path):
         json.dump(self.settings, f)
 
     def save_table_images(self, image, table_set, y_offset=15):
-        cv2.imwrite(f'./table_images/new/{randstr(10)}_under.jpg',
+        cv2.imwrite(f'./table_images/new/under_{randstr(10)}.jpg',
                       self.get_under_table_boundingbox(image, table_set, y_offset))
-        # cv2.imwrite(f'./table_images/new/{randstr(10)}_middle.jpg',
-        #            self.get_middle_table_boundingbox(image, table_set, y_offset))
-        #cv2.imwrite(f'./table_images/new/{randstr(10)}_up.jpg',
-        #            self.get_up_table_boundingbox(image, table_set, y_offset))
+        cv2.imwrite(f'./table_images/new/middle_{randstr(10)}.jpg',
+                    self.get_middle_table_boundingbox(image, table_set, y_offset))
+        cv2.imwrite(f'./table_images/new/up_{randstr(10)}.jpg',
+                    self.get_up_table_boundingbox(image, table_set, y_offset))
