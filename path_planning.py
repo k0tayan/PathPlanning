@@ -13,10 +13,11 @@ zone = 'red'
 class PathPlanning:
     def __init__(self, send=True):
         self.send = send
-        self.fail = [False, False, False]
+        # 立っていたらTrue、立っていなかったらFalse
+        self.result = [False, False, False]
+        self.log = True
 
     def main(self, arg, show=False):
-        logging.info("path_planning start")
         # plot setting
         plt.figure()
         ax = plt.axes()
@@ -49,7 +50,7 @@ class PathPlanning:
                 zone = 'red'
             else:
                 zone = 'blue'
-        logging.info(f'\nunder:{(table_under.x, 5500)}\nmiddle:{(table_middle.x, 6500)}\nup:{(table_up.x, 7500)}')
+        # logging.info(f'\nunder:{(table_under.x, 5500)}\nmiddle:{(table_middle.x, 6500)}\nup:{(table_up.x, 7500)}')
         if zone == 'red':
             two_stage_table = Table(config.two_stage_table_red_zone_x, config.two_stage_table_red_zone_y,
                                     config.two_stage_table_width, config.robot_width, ax)
@@ -68,7 +69,6 @@ class PathPlanning:
 
         # path planning
         points = path.path_planning()
-        print(f"移動距離:{path.get_distance(points)}mm")
         try:
             send_points = list(points)
             flip_points = path.get_flip_point()
@@ -76,14 +76,14 @@ class PathPlanning:
                 send_points.append(Point(0, 0))
             if self.send:
                 tcp = Tcp(host='192.168.0.14', port=10001)
-                # tcp.connect()
-                packet = tcp.create_packet(points, flip_points, self.fail)
-                # tcp.send(packet)
+                packet = tcp.create_packet(send_points, flip_points, self.result)
+                tcp.connect()
+                tcp.send(packet)
+                logging.info("send:success")
         except Exception as error:
             logging.error(str(error))
         points_x = [point.x for point in points]
         points_y = [point.y for point in points]
-        logging.info(f"flip_points:{path.get_flip_point()}")
 
         # plot
         field.plot()
@@ -98,10 +98,15 @@ class PathPlanning:
         if show:
             plt.show()
         plt.close()
-        logging.info("path_planning end")
+        if self.log:
+            logging.info("path_planning start")
+            print(f"移動距離:{path.get_distance(points)}mm")
+            logging.info(f"flip_points:{path.get_flip_point()}")
+            logging.info("path_planning end")
+        self.log = False
 
-    def set_fail(self, under, middle, up):
-        self.fail = [under, middle, up]
+    def set_result(self, under, middle, up):
+        self.result = [under, middle, up]
 
 
 if __name__ == '__main__':
