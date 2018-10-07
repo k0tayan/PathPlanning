@@ -21,21 +21,21 @@ class Tcp:
     def server(self):
         self.serversock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.serversock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        self.serversock.bind((self.host, self.port))  # IPとPORTを指定してバインドします
+        self.serversock.bind((self.host, self.port))
         self.serversock.listen(10)
-        self.clientsock, client_address = self.serversock.accept()  # 接続されればデータを格納
+        self.clientsock, client_address = self.serversock.accept()
 
     def receive(self):
         rcvmsg = self.clientsock.recv(13)
         return rcvmsg
 
-    def create_packet(self, points, flip_points, fail):
+    def create_packet(self, points, flip_points, result):
         points_x = [point.x for point in points]
         points_y = [point.y for point in points]
-        points_x[0] = 0
-        points_y[0] = 0
         x_l = list(map(int, points_x))
         y_l = list(map(int, points_y))
+        x_l[0] = 0
+        y_l[0] = 0
 
         buf = []
         buf.append(0)
@@ -55,9 +55,12 @@ class Tcp:
                 data += 0x01
             elif flip_point[1] == 'FRONT':
                 data += 0x02
-            if i == 1 and fail[0] or i == 2 and fail[1] or i == 3 and fail[2]:
+            if (i == 1 and not result[0]) or (i == 2 and not result[1]) or (i == 3 and not result[2]):
                 data += 0x20
             buf.append(data)
         buf[0] = (sum(buf[1:]) & 0x7f) | 0x80
+        # print(result)
+        # for i, tmp in enumerate(buf):
+        #    print(f"[{i}]", tmp)
         p = struct.pack('B' * len(buf), *buf)
         return p
