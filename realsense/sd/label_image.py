@@ -23,8 +23,12 @@ import cv2
 import time
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
-model_file = "/Users/sho/PycharmProjects/PathPlanning/realsense/sd/retrained_graph_green.pb"
-label_file = "/Users/sho/PycharmProjects/PathPlanning/realsense/sd/retrained_labels.txt"
+model_file_under = "/Users/sho/PycharmProjects/PathPlanning/realsense/sd/green/retrained_graph_green_under.pb"
+label_file_under = "/Users/sho/PycharmProjects/PathPlanning/realsense/sd/green/retrained_labels_under.txt"
+model_file_middle = "/Users/sho/PycharmProjects/PathPlanning/realsense/sd/green/retrained_graph_green_middle.pb"
+label_file_middle = "/Users/sho/PycharmProjects/PathPlanning/realsense/sd/green/retrained_labels_middle.txt"
+model_file_up= "/Users/sho/PycharmProjects/PathPlanning/realsense/sd/green/retrained_graph_green_up.pb"
+label_file_up = "/Users/sho/PycharmProjects/PathPlanning/realsense/sd/green/retrained_labels_up.txt"
 input_height = 299
 input_width = 299
 input_mean = 0
@@ -94,9 +98,19 @@ class StandingDetection:
         return result
 
     def detect(self, image):
+        type = image[1]
+        if type == 0:
+            model_file = model_file_under
+            label_file = label_file_under
+        elif type == 1:
+            model_file = model_file_middle
+            label_file = label_file_middle
+        else:
+            model_file = model_file_up
+            label_file = label_file_up
         sd = StandingDetection()
         graph = sd.load_graph(model_file)
-        t = self.read_tensor_from_numpy_image(image)
+        t = self.read_tensor_from_numpy_image(image[0])
         input_name = "import/" + input_layer
         output_name = "import/" + output_layer
         input_operation = graph.get_operation_by_name(input_name)
@@ -112,6 +126,7 @@ class StandingDetection:
         ret = []
         for i in top_k:
             ret.append((labels[i], results[i]))
+            print((labels[i], results[i]))
         ret.sort(key=lambda x: x[1], reverse=True)
         return ret[0][0]
 
