@@ -9,6 +9,8 @@ class Config:
     radius_filter_front = (110, 22)
     distance_filter_front = (2.4, 5.3)
     tensorflow = True
+    width = 1280
+    height = 720
 
 
 class Path:
@@ -35,3 +37,4 @@ class Color:
     white = (255, 255, 255)
     error = (255, 75, 0)
     black = (0, 0, 0)
+    green = (156, 100, 71)
