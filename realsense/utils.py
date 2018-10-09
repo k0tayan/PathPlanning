@@ -191,14 +191,13 @@ class Utils(Config, Field, Path):
         if self.tensorflow:
             image_list = [[under, 0], [middle, 1], [up, 2]]
             thread = threading.Thread(target=self.check_by_tensorflow, args=(table_set, image_list), daemon=True, )
-            # self.check_by_tensorflow(table_set, image_list)
             thread.start()
         else:
             image_list = [under, middle, up]
             self.check_by_keras(table_set, image_list)
 
     def check_led(self, for_check):
-        image = for_check[400:, :]
+        image = for_check[300:, :]
         image = cv2.medianBlur(image, 5)
         # スライダーの値から緑色の上限値、下限値を指定
         lower_green = np.array([64, 0, 251])
@@ -214,11 +213,12 @@ class Utils(Config, Field, Path):
         # 二値化
         ret, thresh = cv2.threshold(gray, 150, 255, cv2.THRESH_BINARY)
 
-        """# 縮小と膨張
-        kernel = np.ones((10, 10), np.uint8)
+        # 縮小と膨張
+        kernel = np.ones((12, 12), np.uint8)
         erode = cv2.erode(thresh, kernel)
-        thresh = cv2.dilate(erode, kernel)"""
+        thresh = cv2.dilate(erode, kernel)
 
+        imgEdge, contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         sum = np.sum(thresh == 255)
         return sum
 
@@ -245,13 +245,31 @@ class Utils(Config, Field, Path):
                 print('up:falling down')
             self.log = False
 
-    def put_standing_detection_result(self, image, table_set):
-        if table_set.under.standing:
-            cv2.circle(image, table_set.under.center, table_set.under.radius + 10, (0, 252, 124), 3)
-        if table_set.middle.standing:
-            cv2.circle(image, table_set.middle.center, table_set.middle.radius + 10, (0, 252, 124), 3)
-        if table_set.up.standing:
-            cv2.circle(image, table_set.up.center, table_set.up.radius + 10, (0, 252, 124), 3)
+    def put_standing_detection_result(self, image, table_set, result):
+        under, middle, up = result
+        if self.zone:
+            sim = cv2.imread(self.red_field_image)
+        else:
+            sim = cv2.imread(self.blue_field_image)
+        if under:
+            cv2.circle(image, table_set.under.center, table_set.under.radius + 10, Color.light_green, 3)
+            cv2.circle(sim, (275, 220), 80, Color.red, 4)
+        elif under is not None:
+            cv2.line(sim, (205, 205), (348, 348), Color.blue, 6)
+            cv2.line(sim, (205, 348), (348, 205), Color.blue, 6)
+        if middle:
+            cv2.circle(image, table_set.middle.center, table_set.middle.radius + 10, Color.light_green, 3)
+            cv2.circle(sim, (620, 175), 80, Color.red, 4)
+        elif middle is not None:
+            cv2.line(sim, (546, 146), (699, 280), Color.blue, 6)
+            cv2.line(sim, (546, 280), (699, 146), Color.blue, 6)
+        if up:
+            cv2.circle(image, table_set.up.center, table_set.up.radius + 10, Color.light_green, 3)
+            cv2.circle(sim, (1025, 110), 80, Color.red, 4)
+        elif up is not None:
+            cv2.line(sim, (953, 25), (1100, 180), Color.blue, 6)
+            cv2.line(sim, (953, 180), (1100, 25), Color.blue, 6)
+        return sim
 
     def make_distance_send(self, tables):
         t = T()

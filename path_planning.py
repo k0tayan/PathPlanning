@@ -4,6 +4,7 @@ import random
 from bottleflip import *
 import sys
 import coloredlogs, logging
+import threading
 
 coloredlogs.install()
 random_move = False
@@ -16,6 +17,15 @@ class PathPlanning:
         # 立っていたらTrue、立っていなかったらFalse
         self.result = [False, False, False]
         self.log = True
+        self.tcp = None
+
+    def send_packet(self, packet):
+        try:
+            self.tcp.connect()
+            self.tcp.send(packet)
+            logging.info("send:success")
+        except Exception as error:
+            logging.error(str(error))
 
     def main(self, arg, show=False):
         # plot setting
@@ -42,6 +52,18 @@ class PathPlanning:
                 random.randint(config.move_table_randomize_area_min, config.move_table_randomize_area_max + 1), 7500,
                 config.move_table_width, config.robot_width, ax)
         else:
+            if arg[0] < 1350:
+                arg[0] = 1350
+            if arg[1] < 1350:
+                arg[1] = 1350
+            if arg[2] < 1350:
+                arg[2] = 1350
+            if arg[0] > 3550:
+                arg[0] = 3550
+            if arg[1] > 3550:
+                arg[1] = 3550
+            if arg[2] > 3550:
+                arg[2] = 3550
             table_under = Table(arg[0], 5500, config.move_table_width, config.robot_width, ax)
             table_middle = Table(arg[1], 6500, config.move_table_width, config.robot_width, ax)
             table_up = Table(arg[2], 7500, config.move_table_width, config.robot_width, ax)
@@ -75,11 +97,10 @@ class PathPlanning:
             for i in range(8 - len(send_points)):
                 send_points.append(Point(0, 0))
             if self.send:
-                tcp = Tcp(host='192.168.0.14', port=10001)
-                packet = tcp.create_packet(send_points, flip_points, self.result)
-                tcp.connect()
-                tcp.send(packet)
-                logging.info("send:success")
+                self.tcp = Tcp(host='192.168.0.14', port=10001)
+                packet = self.tcp.create_packet(send_points, flip_points, self.result)
+                thread = threading.Thread(target=self.send_packet, args=(packet,), daemon=True)
+                thread.start()
         except Exception as error:
             logging.error(str(error))
         points_x = [point.x for point in points]

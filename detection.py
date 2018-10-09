@@ -29,31 +29,38 @@ timer = time.time()
 detection = True
 sc = 1
 cd_start = sys.maxsize
+view_mode = 0 # 0=thresh 1=path 2=standing_detection
+sumc = 0
+result = [None, None, None]
+auto_change = True
+result_image = None
+suma = np.array([])
 
-window_name = 'PathPlanning by @kotayan_0415'
+window_name = 'PathPlanning'
 path_window_name = 'Path'
-cv2.namedWindow(window_name, cv2.WINDOW_AUTOSIZE)
+bar_window_name = 'setting'
+cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
 cv2.moveWindow(window_name, 450, 0, )
-cv2.namedWindow(path_window_name, cv2.WINDOW_NORMAL)
-cv2.createTrackbar('H', window_name, 0, 255, util.nothing)
-cv2.createTrackbar('S', window_name, 0, 255, util.nothing)
-cv2.createTrackbar('V', window_name, 0, 255, util.nothing)
-cv2.createTrackbar('LV', window_name, 0, 255, util.nothing)
-cv2.createTrackbar('threshold', window_name, 0, 255, util.nothing)
-cv2.createTrackbar('kernel', window_name, 0, 100, util.nothing)
-cv2.createTrackbar('horizon', window_name, 0, height, util.nothing)
-cv2.createTrackbar('vertical', window_name, 0, width, util.nothing)
-cv2.createTrackbar('remove_side', window_name, 0, 30, util.nothing)
-cv2.createTrackbar('zone', window_name, 0, 1, util.nothing)
+cv2.namedWindow(bar_window_name, cv2.WINDOW_AUTOSIZE)
+cv2.createTrackbar('H', bar_window_name, 0, 255, util.nothing)
+cv2.createTrackbar('S', bar_window_name, 0, 255, util.nothing)
+cv2.createTrackbar('V', bar_window_name, 0, 255, util.nothing)
+cv2.createTrackbar('LV', bar_window_name, 0, 255, util.nothing)
+cv2.createTrackbar('threshold', bar_window_name, 0, 255, util.nothing)
+cv2.createTrackbar('kernel', bar_window_name, 0, 100, util.nothing)
+cv2.createTrackbar('horizon', bar_window_name, 0, height, util.nothing)
+cv2.createTrackbar('vertical', bar_window_name, 0, width, util.nothing)
+cv2.createTrackbar('remove_side', bar_window_name, 0, 30, util.nothing)
+cv2.createTrackbar('zone', bar_window_name, 0, 1, util.nothing)
 
-cv2.setTrackbarPos('H', window_name, util.settings['h'])
-cv2.setTrackbarPos('S', window_name, util.settings['s'])
-cv2.setTrackbarPos('V', window_name, util.settings['v'])
-cv2.setTrackbarPos('LV', window_name, util.settings['lv'])
-cv2.setTrackbarPos('threshold', window_name, util.settings['th'])
-cv2.setTrackbarPos('kernel', window_name, util.settings['k'])
-cv2.setTrackbarPos('remove_side', window_name, util.settings['rms'])
-cv2.setTrackbarPos('zone', window_name, Config.zone)
+cv2.setTrackbarPos('H', bar_window_name, util.settings['h'])
+cv2.setTrackbarPos('S', bar_window_name, util.settings['s'])
+cv2.setTrackbarPos('V', bar_window_name, util.settings['v'])
+cv2.setTrackbarPos('LV', bar_window_name, util.settings['lv'])
+cv2.setTrackbarPos('threshold', bar_window_name, util.settings['th'])
+cv2.setTrackbarPos('kernel', bar_window_name, util.settings['k'])
+cv2.setTrackbarPos('remove_side', bar_window_name, util.settings['rms'])
+cv2.setTrackbarPos('zone', bar_window_name, Config.zone)
 logging.info('START DETECTION')
 
 try:
@@ -72,16 +79,16 @@ try:
             k = cv2.waitKey(1)
 
             # スライダーの値を取得
-            h = cv2.getTrackbarPos('H', window_name)
-            s = cv2.getTrackbarPos('S', window_name)
-            v = cv2.getTrackbarPos('V', window_name)
-            lv = cv2.getTrackbarPos('LV', window_name)
-            th = cv2.getTrackbarPos('threshold', window_name)
-            kn = cv2.getTrackbarPos('kernel', window_name)
-            horizon = cv2.getTrackbarPos('horizon', window_name)
-            vertical = cv2.getTrackbarPos('vertical', window_name)
-            remove_side = cv2.getTrackbarPos('remove_side', window_name)
-            Config.zone = cv2.getTrackbarPos('zone', window_name)
+            h = cv2.getTrackbarPos('H', bar_window_name)
+            s = cv2.getTrackbarPos('S', bar_window_name)
+            v = cv2.getTrackbarPos('V', bar_window_name)
+            lv = cv2.getTrackbarPos('LV', bar_window_name)
+            th = cv2.getTrackbarPos('threshold', bar_window_name)
+            kn = cv2.getTrackbarPos('kernel', bar_window_name)
+            horizon = cv2.getTrackbarPos('horizon', bar_window_name)
+            vertical = cv2.getTrackbarPos('vertical', bar_window_name)
+            remove_side = cv2.getTrackbarPos('remove_side', bar_window_name)
+            Config.zone = cv2.getTrackbarPos('zone', bar_window_name)
 
             # スライダーの値から白色の上限値、下限値を指定
             upper_white = np.array([h, s, v])
@@ -123,7 +130,7 @@ try:
             # テーブルの検出が終了していたら
             if not detection:
                 util.put_info_by_set(color_image_copy, table_set, Color.black)
-                util.put_standing_detection_result(color_image_copy, table_set)
+                result_image = util.put_standing_detection_result(color_image_copy, table_set, result)
                 # 画像収集
                 if k == ord('r'):
                     logging.info(f'STORED:{sc}')
@@ -132,14 +139,24 @@ try:
 
                 # ペットボトルが立っているかの検出
                 sum = util.check_led(for_check)
+                if sum > 500:
+                    sumc += 1
+                else:
+                    sumc = 0
                 color_image_copy = util.put_text(
                     img=color_image_copy, text=str(sum), pos=(width-100, height-50), color=Color.black)
-                if sum > 500 or k == ord('d'):
+
+                if sumc > 10 or k == ord('d'):
                     if not util.processing_standing_detection:
                         util.check_standing(for_check, table_set)
+                    sumc = 0
+                    table_set.under.standing = None
+                    table_set.middle.standing = None
+                    table_set.up.standing = None
 
                 if table_set.up.standing is not None:
                     util.processing_standing_detection = False
+                    result = [table_set.under.standing, table_set.middle.standing, table_set.up.standing]
                     # util.log_standing(table_set)
                     # 立っていたらTrue、立っていなかったらFalse
                     plan.set_result(table_set.under.standing, table_set.middle.standing,
@@ -151,9 +168,14 @@ try:
 
                 # 3秒おきに送信
                 if time.time() - timer > 3:
-                     ret = util.make_distance_send(table_set)
-                     plan.main([ret.under, ret.middle, ret.up, Config.zone])
-                     timer = time.time()
+                    ret = util.make_distance_send(table_set)
+                    plan.main([ret.under, ret.middle, ret.up, Config.zone])
+                    timer = time.time()
+
+                    if auto_change:
+                        view_mode += 1
+                        if view_mode > 2:
+                            view_mode = 0
 
             # テーブル検出
             if detection:
@@ -170,7 +192,7 @@ try:
                             thresh[white_index[0]][white_index[1]] = 0
                             color_image_copy[white_index[0]][white_index[1]] = [255, 0, 0]
                     else:
-                        if (white_index[1], white_index[0]) < (300, 300) and dist > 2700 + white_index[0]:
+                        if (white_index[1] < 300 and white_index[0] > 300)  and dist > 2700 + white_index[0]:
                             thresh[white_index[0]][white_index[1]] = 0
                             color_image_copy[white_index[0]][white_index[1]] = [255, 0, 0]
 
@@ -226,12 +248,12 @@ try:
                         if time.time() - timer > 3:
                             ret = util.make_distance_send(table_set)
                             plan.main([ret.under, ret.middle, ret.up, Config.zone])
-                            path_view = cv2.imread("output/tmp.png")
-                            path_height = path_view.shape[0]
-                            path_width = path_view.shape[1]
-                            path_view = cv2.resize(path_view, (int(path_width / 2), int(path_height / 2)))
-                            cv2.imshow(path_window_name, path_view)
                             timer = time.time()
+
+                            if auto_change:
+                                view_mode += 1
+                                if view_mode > 2:
+                                    view_mode = 0
 
                         if k == ord('n'):
                             detection = False
@@ -255,12 +277,36 @@ try:
 
             # 二値をカラーに
             thresh = cv2.applyColorMap(cv2.convertScaleAbs(thresh), cv2.COLORMAP_BONE)
-            # 結合
-            images = np.hstack((color_image_copy, thresh))
+
+            if view_mode == 0:
+                # 見せるウインドウには経路を表示
+                path_view = cv2.imread("output/tmp.png")
+                back = np.full((720, 1280, 3), 255, dtype=np.uint8)
+                path_view = cv2.resize(path_view, (1210, 720))
+                back[0:720, 70:1280] = path_view
+                images = np.hstack((color_image_copy, back))
+            elif view_mode == 1:
+                path_view = cv2.imread("output/tmp.png")
+                back = np.full((720, 1280, 3), 255, dtype=np.uint8)
+                path_view = cv2.resize(path_view, (1210, 720))
+                back[0:720, 70:1280] = path_view
+                images = np.hstack((color_image_copy, back))
+            elif view_mode == 2:
+                if result_image is not None:
+                    images = np.hstack((color_image_copy, result_image))
+                else:
+                    images = np.hstack((color_image_copy, thresh))
+            else:
+                images = np.hstack((color_image_copy, thresh))
+
+            # threshウインドウのみthreshを表示
+            images_for_thersh = np.hstack((color_image_copy, thresh))
             # ウインドウサイズがでかくなりすぎるので、縮小
             images = cv2.resize(images, (int(1280 * 0.65), int(480 * 0.65)))
+            images_for_thersh = cv2.resize(images_for_thersh, (int(1280 * 0.65), int(480 * 0.65)))
             # 表示
             cv2.imshow(window_name, images)
+            cv2.imshow(bar_window_name, images_for_thersh)
 
             # 終了
             if k == ord('q'):
@@ -270,6 +316,15 @@ try:
             if k == ord('s'):
                 logging.info('SAVED PARAMETER')
                 util.save_param(h, s, v, lv, th, kn, remove_side)
+
+            if k == ord('c'):
+                view_mode += 1
+                if view_mode > 2:
+                    view_mode = 0
+
+            if k == ord('o'):
+                auto_change = not auto_change
+
         except Exception as error:
             if str(error) == "wait_for_frames cannot be called before start()":
                 pipeline.stop()

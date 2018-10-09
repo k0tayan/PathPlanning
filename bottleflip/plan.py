@@ -236,12 +236,19 @@ class Path(FlipPoint):
             flip_point_index += 1
             self.flip_points.append((flip_point_index, self.table_under.goal_state))
         elif self.zone == 'blue' and self.table_under.goal.x > self.two_stage_table.goal.x:
-            path.append(Point(self.table_under.goal.x, 4500))
+            # path.append(Point(self.table_under.goal.x, 4500))
+            path.append(Point(self.table_under.goal.x, 4700))
             flip_point_index += 1
             self.flip_points.append((flip_point_index, self.table_under.goal_state))
         else:
-            path.append(Point(self.two_stage_table.goal.x, 4500))
-            path.append(Point(self.table_under.goal.x, 4500))
+            if self.zone == 'blue':
+                path.append(Point(self.two_stage_table.goal.x, 4700))
+                path.append(Point(self.table_under.goal.x, 4700))
+            else:
+                path.append(Point(self.two_stage_table.goal.x, 4500))
+                path.append(Point(self.table_under.goal.x, 4500))
+            # path.append(Point(self.two_stage_table.goal.x, 4500))
+            # path.append(Point(self.table_under.goal.x, 4500))
             flip_point_index += 2
             self.flip_points.append((flip_point_index, self.table_under.goal_state))
         path.append(self.table_under.goal)
@@ -270,13 +277,14 @@ class Path(FlipPoint):
         points_1 = self.make_path()
         distance_1 = self.get_distance(points_1)
 
-        self.make_simple_flip_points(self.zone)
-        points_2 = self.make_path()
-        distance_2 = self.get_distance(points_2)
-        if distance_1 < distance_2:
-            return points_1
-        else:
-            return points_2
+        #self.make_simple_flip_points(self.zone)
+        #points_2 = self.make_path()
+        #distance_2 = self.get_distance(points_2)
+        #if distance_1 < distance_2:
+        #    return points_1
+        #else:
+        #    return points_2
+        return points_1
 
     def get_flip_point(self):
         return self.flip_points

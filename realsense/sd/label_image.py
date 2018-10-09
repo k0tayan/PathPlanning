@@ -98,37 +98,41 @@ class StandingDetection:
         return result
 
     def detect(self, image):
-        type = image[1]
-        if type == 0:
-            model_file = model_file_under
-            label_file = label_file_under
-        elif type == 1:
-            model_file = model_file_middle
-            label_file = label_file_middle
-        else:
-            model_file = model_file_up
-            label_file = label_file_up
-        sd = StandingDetection()
-        graph = sd.load_graph(model_file)
-        t = self.read_tensor_from_numpy_image(image[0])
-        input_name = "import/" + input_layer
-        output_name = "import/" + output_layer
-        input_operation = graph.get_operation_by_name(input_name)
-        output_operation = graph.get_operation_by_name(output_name)
-        with tf.Session(graph=graph) as sess:
-            results = sess.run(output_operation.outputs[0], {
-                input_operation.outputs[0]: t
-            })
-        results = np.squeeze(results)
-        top_k = results.argsort()[-5:][::-1]
-        labels = sd.load_labels(label_file)
+        try:
+            type = image[1]
+            if type == 0:
+                model_file = model_file_under
+                label_file = label_file_under
+            elif type == 1:
+                model_file = model_file_middle
+                label_file = label_file_middle
+            else:
+                model_file = model_file_up
+                label_file = label_file_up
+            sd = StandingDetection()
+            graph = sd.load_graph(model_file)
+            t = self.read_tensor_from_numpy_image(image[0])
+            input_name = "import/" + input_layer
+            output_name = "import/" + output_layer
+            input_operation = graph.get_operation_by_name(input_name)
+            output_operation = graph.get_operation_by_name(output_name)
+            with tf.Session(graph=graph) as sess:
+                results = sess.run(output_operation.outputs[0], {
+                    input_operation.outputs[0]: t
+                })
+            results = np.squeeze(results)
+            top_k = results.argsort()[-5:][::-1]
+            labels = sd.load_labels(label_file)
 
-        ret = []
-        for i in top_k:
-            ret.append((labels[i], results[i]))
-            print((labels[i], results[i]))
-        ret.sort(key=lambda x: x[1], reverse=True)
-        return ret[0][0]
+            ret = []
+            for i in top_k:
+                ret.append((labels[i], results[i]))
+                print(type, (labels[i], results[i]))
+            ret.sort(key=lambda x: x[1], reverse=True)
+            return ret[0][0]
+        except Exception as error:
+            print(str(error))
+            return 'fallendown'
 
 
 if __name__ == "__main__":
