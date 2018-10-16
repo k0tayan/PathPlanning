@@ -103,7 +103,7 @@ try:
             for_check = color_image.copy()
 
             if Config.zone:
-                pts = np.array([[0, 350], [100, 350], [0, height]])
+                pts = np.array([[0, 0], [remove_side*10, 0], [0, height]])
                 color_image_copy = cv2.fillPoly(color_image_copy, pts=[pts], color=Color.red)
             else:
                 pts = np.array([[remove_side * 50, 0], [width, 0], [width, height]])
@@ -138,21 +138,15 @@ try:
                     sc += 1
 
                 # ペットボトルが立っているかの検出
-                sum = util.check_led(for_check)
-                if sum > 500:
-                    sumc += 1
-                else:
-                    sumc = 0
+                # sum = util.check_led(for_check)
                 color_image_copy = util.put_text(
                     img=color_image_copy, text=str(sum), pos=(width-100, height-50), color=Color.black)
 
-                if sumc > 10 or k == ord('d'):
-                    if not util.processing_standing_detection:
-                        util.check_standing(for_check, table_set)
-                    sumc = 0
-                    table_set.under.standing = None
-                    table_set.middle.standing = None
-                    table_set.up.standing = None
+                if not util.processing_standing_detection:
+                    util.check_standing(for_check, table_set)
+                table_set.under.standing = None
+                table_set.middle.standing = None
+                table_set.up.standing = None
 
                 if table_set.up.standing is not None:
                     util.processing_standing_detection = False
@@ -188,7 +182,7 @@ try:
                 for white_index in zip(white_indexes[0], white_indexes[1]):
                     dist = np_image[white_index[0]][white_index[1]]
                     if not Config.zone:
-                        if (white_index[1], white_index[0]) > (1000, 300) and dist > 2800 + white_index[0]:
+                        if (white_index[1], white_index[0]) > (1000, 300) and dist > 2750 + white_index[0]:
                             thresh[white_index[0]][white_index[1]] = 0
                             color_image_copy[white_index[0]][white_index[1]] = [255, 0, 0]
                     else:
@@ -262,7 +256,7 @@ try:
                         if k == 32:  # SPACE
                             cd_start = time.time()
 
-                        if time.time() - cd_start > 10:
+                        if time.time() - cd_start > Config.seconds:
                             detection = False
                             logging.info('END DETECTION')
 

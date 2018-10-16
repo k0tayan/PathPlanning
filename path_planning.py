@@ -27,6 +27,14 @@ class PathPlanning:
         except Exception as error:
             logging.error(str(error))
 
+    def fix(self, coord):
+        if coord < 1350:
+            return 1350
+        elif coord > 3550:
+            return 3550
+        else:
+            return coord
+
     def main(self, arg, show=False):
         # plot setting
         plt.figure()
@@ -43,32 +51,24 @@ class PathPlanning:
         field = Field(config.field_width, config.field_height, ax)
         if random_move:
             table_under = Table(
-                random.randint(config.move_table_randomize_area_min, config.move_table_randomize_area_max + 1), 5500,
+                random.randint(config.move_table_randomize_area_min, config.move_table_randomize_area_max), config.move_table_under_y,
                 config.move_table_width, config.robot_width, ax)
             table_middle = Table(
-                random.randint(config.move_table_randomize_area_min, config.move_table_randomize_area_max + 1), 6500,
+                random.randint(config.move_table_randomize_area_min, config.move_table_randomize_area_max), config.move_table_middle_y,
                 config.move_table_width, config.robot_width, ax)
             table_up = Table(
-                random.randint(config.move_table_randomize_area_min, config.move_table_randomize_area_max + 1), 7500,
+                random.randint(config.move_table_randomize_area_min, config.move_table_randomize_area_max), config.move_table_up_y,
                 config.move_table_width, config.robot_width, ax)
         else:
-            if arg[0] < 1350:
-                arg[0] = 1350
-            if arg[1] < 1350:
-                arg[1] = 1350
-            if arg[2] < 1350:
-                arg[2] = 1350
-            if arg[0] > 3550:
-                arg[0] = 3550
-            if arg[1] > 3550:
-                arg[1] = 3550
-            if arg[2] > 3550:
-                arg[2] = 3550
-            table_under = Table(arg[0], 5500, config.move_table_width, config.robot_width, ax)
-            table_middle = Table(arg[1], 6500, config.move_table_width, config.robot_width, ax)
-            table_up = Table(arg[2], 7500, config.move_table_width, config.robot_width, ax)
+            under, middle, up, arg_zone = arg
+            under = self.fix(under)
+            middle = self.fix(middle)
+            up = self.fix(up)
+            table_under = Table(under, config.move_table_under_y, config.move_table_width, config.robot_width, ax)
+            table_middle = Table(middle, config.move_table_middle_y, config.move_table_width, config.robot_width, ax)
+            table_up = Table(up, config.move_table_up_y, config.move_table_width, config.robot_width, ax)
             global zone
-            if arg[3] == 1:
+            if arg_zone == 1:
                 zone = 'red'
             else:
                 zone = 'blue'
