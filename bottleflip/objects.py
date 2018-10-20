@@ -5,6 +5,9 @@ LEFT = 'LEFT'
 RIGHT = 'RIGHT'
 FRONT = 'FRONT'
 
+RED = 'red'
+BLUE = 'blue'
+
 class Point:
     def __init__(self, x, y):
         self.x = x
@@ -65,9 +68,9 @@ class Table(Rect, Point):
         elif direction == RIGHT:
             self.goal = self.right_goal
             self.goal_state = RIGHT
-        elif direction == RIGHT:
+        elif direction == FRONT:
             self.goal = self.front_goal
-            self.goal_state = RIGHT
+            self.goal_state = FRONT
         else:
             raise Exception('Please set valid direction.')
 
