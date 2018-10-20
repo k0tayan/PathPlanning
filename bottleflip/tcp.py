@@ -55,8 +55,6 @@ class Tcp:
                 data += 0x01
             elif flip_point[1] == 'FRONT':
                 data += 0x02
-            if (i == 1 and not result[0]) or (i == 2 and not result[1]) or (i == 3 and not result[2]):
-                data += 0x20
             buf.append(data)
         buf[0] = (sum(buf[1:]) & 0x7f) | 0x80
         # print(result)
