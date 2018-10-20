@@ -100,8 +100,10 @@ try:
             # 画像保存用にcolor_imageをコピーした変数を作成
             color_image_for_save = color_image.copy()
 
+            # チェック用
             for_check = color_image.copy()
 
+            # 横の消すやつ
             if Config.zone:
                 pts = np.array([[0, 0], [remove_side*10, 0], [0, height]])
                 color_image_copy = cv2.fillPoly(color_image_copy, pts=[pts], color=Color.red)
@@ -138,15 +140,11 @@ try:
                     sc += 1
 
                 # ペットボトルが立っているかの検出
-                # sum = util.check_led(for_check)
-                color_image_copy = util.put_text(
-                    img=color_image_copy, text=str(sum), pos=(width-100, height-50), color=Color.black)
-
                 if not util.processing_standing_detection:
                     util.check_standing(for_check, table_set)
-                table_set.under.standing = None
-                table_set.middle.standing = None
-                table_set.up.standing = None
+                    table_set.under.standing = None
+                    table_set.middle.standing = None
+                    table_set.up.standing = None
 
                 if table_set.up.standing is not None:
                     util.processing_standing_detection = False
