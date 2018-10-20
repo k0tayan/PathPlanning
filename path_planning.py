@@ -72,7 +72,7 @@ class PathPlanning:
                 zone = 'red'
             else:
                 zone = 'blue'
-        # logging.info(f'\nunder:{(table_under.x, 5500)}\nmiddle:{(table_middle.x, 6500)}\nup:{(table_up.x, 7500)}')
+        logging.info(f'\nunder:{table_under.x} middle:{table_middle.x} up:{table_up.x}')
         if zone == 'red':
             two_stage_table = Table(config.two_stage_table_red_zone_x, config.two_stage_table_red_zone_y,
                                     config.two_stage_table_width, config.robot_width, ax)
@@ -116,15 +116,15 @@ class PathPlanning:
         ax.plot(points_x, points_y, '.', color='red')
         ax.plot(points_x, points_y, '-', color='green')
         plt.savefig('output/tmp.png')
-        if show:
-            plt.show()
-        plt.close()
         if self.log:
             logging.info("path_planning start")
             print(f"移動距離:{path.get_distance(points)}mm")
             logging.info(f"flip_points:{path.get_flip_point()}")
             logging.info("path_planning end")
         self.log = False
+        if show:
+            plt.show()
+        plt.close()
 
     def set_result(self, under, middle, up):
         self.result = [under, middle, up]
