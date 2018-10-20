@@ -1,5 +1,6 @@
 import numpy as np
 from .objects import *
+from .config import *
 
 class FlipPoint:
     def __init__(self, field, robot, table_under, table_middle, table_up):
@@ -26,7 +27,7 @@ class FlipPoint:
         self.table_up.set_goal(up_goal)
 
     def set_goal_by_zone(self, zone):
-        if zone == 'red':
+        if zone == RED:
             self.set_left_all()
         else:
             self.set_right_all()
@@ -134,16 +135,32 @@ class FlipPoint:
         if self.table_under.x >= self.table_middle.x and self.table_middle.x <= self.table_up.x:
             if abs(self.table_under.x - self.table_middle.x) > 2 * (self.move_table_width / 2) + self.robot.width:
                 if abs(self.table_middle.x - self.table_up.x) > 2 * (self.move_table_width / 2) + self.robot.width:
+                    print(1)
                     self.set_goal(LEFT, RIGHT, LEFT)
                 else:
-                    self.set_goal(LEFT, RIGHT, RIGHT)
+                    if abs(self.table_middle.x - self.table_up.x) > self.robot.width / 2 + turn_margin:
+                        print(2)
+                        self.set_goal(LEFT, RIGHT, FRONT)
+                    else:
+                        print(3)
+                        self.set_goal(LEFT, RIGHT, RIGHT)
             else:
                 if (self.table_under.x + self.table_middle.x) / 2 < 2500:
                     if abs(self.table_middle.x - self.table_up.x) > 2 * (self.move_table_width / 2) + self.robot.width:
+                        print(4)
                         self.set_goal(RIGHT, RIGHT, LEFT)
                     else:
-                        self.set_goal_by_zone(zone)
+                        if abs(self.table_middle.x - self.table_up.x) > self.robot.width / 2 + turn_margin:
+                            print(5)
+                            if zone == RED:
+                                self.set_goal_by_zone(zone)
+                            else:
+                                self.set_goal(RIGHT, RIGHT, FRONT)
+                        else:
+                            print(6)
+                            self.set_goal_by_zone(zone)
                 else:
+                    print(7)
                     self.set_goal_by_zone(zone)
         elif self.table_under.x >= self.table_middle.x >= self.table_up.x:
             if abs(self.table_under.x - self.table_middle.x) > 2 * (self.move_table_width / 2) + self.robot.width:
@@ -153,33 +170,65 @@ class FlipPoint:
                     self.set_goal_by_zone(zone)
                 else:
                     if abs(self.table_middle.x - self.table_up.x) > 2 * (self.move_table_width / 2) + self.robot.width:
+                        print(9)
                         self.set_goal(LEFT, LEFT, RIGHT)
                     else:
-                        self.set_goal_by_zone(zone)
-        elif self.table_under.x <= self.table_middle.x and self.table_middle.x >= self.table_up.x:
+                        print(10)
+                        if abs(self.table_middle.x - self.table_up.x) > self.robot.width / 2 + turn_margin:
+                            self.set_goal(LEFT, LEFT, FRONT)
+                        else:
+                            self.set_goal_by_zone(zone)
+        elif (self.table_under.x <= self.table_middle.x) and (self.table_middle.x >= self.table_up.x):
             if abs(self.table_under.x - self.table_middle.x) > 2 * (self.move_table_width / 2) + self.robot.width:
                 if abs(self.table_middle.x - self.table_up.x) > 2 * (self.move_table_width / 2) + self.robot.width:
+                    print(11)
                     self.set_goal(RIGHT, LEFT, RIGHT)
                 else:
-                    self.set_goal(RIGHT, LEFT, LEFT)
+                    print(12)
+                    if abs(self.table_middle.x - self.table_up.x) > self.robot.width / 2 + turn_margin:
+                        self.set_goal(RIGHT, LEFT, FRONT)
+                    else:
+                        self.set_goal(RIGHT, LEFT, LEFT)
             else:
                 if (self.table_under.x + self.table_middle.x) / 2 < 2500:
-                    self.set_goal_by_zone(zone)
-                else:
-                    if abs(self.table_middle.x - self.table_up.x) > 2 * (self.move_table_width / 2) + self.robot.width:
-                        self.set_goal(LEFT, LEFT, RIGHT)
+                    print(13)
+                    if abs(self.table_middle.x - self.table_up.x) > self.robot.width / 2 + turn_margin:
+                        if zone == RED:
+                            self.set_goal(LEFT, LEFT, FRONT)
+                        else:
+                            self.set_goal_by_zone(zone)
                     else:
                         self.set_goal_by_zone(zone)
+                else:
+                    if abs(self.table_middle.x - self.table_up.x) > 2 * (self.move_table_width / 2) + self.robot.width:
+                        print(14)
+                        self.set_goal(LEFT, LEFT, RIGHT)
+                    else:
+                        print(15)
+                        if abs(self.table_middle.x - self.table_up.x) > self.robot.width / 2 + turn_margin:
+                            if zone == RED:
+                                self.set_goal(LEFT, LEFT, FRONT)
+                            else:
+                                self.set_goal_by_zone(zone)
+                        else:
+                            self.set_goal_by_zone(zone)
         elif self.table_under.x <= self.table_middle.x <= self.table_up.x:
             if abs(self.table_under.x - self.table_middle.x) > 2 * (self.move_table_width / 2) + self.robot.width:
+                print(16)
                 self.set_goal(RIGHT, LEFT, LEFT)
             else:
                 if (self.table_under.x + self.table_middle.x) / 2 < 2500:
                     if abs(self.table_middle.x - self.table_up.x) > 2 * (self.move_table_width / 2) + self.robot.width:
+                        print(17)
                         self.set_goal(RIGHT, RIGHT, LEFT)
                     else:
-                        self.set_goal_by_zone(zone)
+                        print(18)
+                        if abs(self.table_middle.x - self.table_up.x) > self.robot.width / 2 + turn_margin:
+                            self.set_goal(RIGHT, RIGHT, FRONT)
+                        else:
+                            self.set_goal_by_zone(zone)
                 else:
+                    print(19)
                     self.set_goal_by_zone(zone)
         else:
             raise Exception('おかしいよ')
@@ -194,7 +243,7 @@ class Path(FlipPoint):
         self.two_stage_table: Table = two_stage_table
         self.zone = zone
 
-    def make_mid_point(self, _table1: Table, _table2: Table) -> Point:
+    def make_mid_point(self, _table1: Table, _table2: Table):
         table1: Table = _table1
         table2: Table = _table2
         if table1.y > table2.y:
@@ -205,22 +254,26 @@ class Path(FlipPoint):
             if table1.goal_state == LEFT and table2.goal_state == LEFT:
                 return Point(table1.goal.x, table2.goal.y)
             elif table1.goal_state == RIGHT and table2.goal_state == LEFT:
-                return Point(table2.goal.x, table1.goal.y)
+                return None
             elif table1.goal_state == RIGHT and table2.goal_state == RIGHT:
                 return Point(table2.goal.x, table1.goal.y)
             elif table1.goal_state == RIGHT and table2.goal_state == RIGHT:
                 return Point(table2.goal.x, table1.goal.y)
+            elif table1.goal_state == RIGHT and table2.goal_state == FRONT:
+                return None
             else:
                 raise Exception('kotayan is foolish! More think!')
         else:
             if table1.goal_state == LEFT and table2.goal_state == LEFT:
                 return Point(table2.goal.x, table1.goal.y)
             elif table1.goal_state == LEFT and table2.goal_state == RIGHT:
-                return Point(table2.goal.x, table1.goal.y)
+                return None
             elif table1.goal_state == RIGHT and table2.goal_state == RIGHT:
                 return Point(table1.goal.x, table2.goal.y)
             elif table1.goal_state == LEFT and table2.goal_state == RIGHT:
                 return Point(table2.goal.x, table1.goal.y)
+            elif table1.goal_state == LEFT and table2.goal_state == FRONT:
+                return None
             else:
                 raise Exception('kotayan is foolish! More think!')
 
@@ -231,30 +284,34 @@ class Path(FlipPoint):
         path.append(self.two_stage_table.goal)
         self.flip_points.append((flip_point_index, self.two_stage_table.goal_state))
         flip_point_index += 1
-        if self.zone == 'red' and self.table_under.goal.x < self.two_stage_table.goal.x:
+        if self.zone == RED and self.table_under.goal.x < self.two_stage_table.goal.x:
             path.append(Point(self.table_under.goal.x, 4500))
             flip_point_index += 1
             self.flip_points.append((flip_point_index, self.table_under.goal_state))
-        elif self.zone == 'blue' and self.table_under.goal.x > self.two_stage_table.goal.x:
-            # path.append(Point(self.table_under.goal.x, 4500))
+        elif self.zone == BLUE and self.table_under.goal.x > self.two_stage_table.goal.x:
             path.append(Point(self.table_under.goal.x, 4700))
             flip_point_index += 1
             self.flip_points.append((flip_point_index, self.table_under.goal_state))
         else:
-            if self.zone == 'blue':
+            if self.zone == BLUE:
                 path.append(Point(self.two_stage_table.goal.x, 4700))
-                path.append(Point(self.table_under.goal.x, 4700))
+                if self.table_under.goal.x <= self.two_stage_table.goal.x and self.table_under.goal_state == RIGHT:
+                    flip_point_index += 1
+                else:
+                    path.append(Point(self.table_under.goal.x, 4700))
+                    flip_point_index += 2
             else:
                 path.append(Point(self.two_stage_table.goal.x, 4500))
-                path.append(Point(self.table_under.goal.x, 4500))
-            # path.append(Point(self.two_stage_table.goal.x, 4500))
-            # path.append(Point(self.table_under.goal.x, 4500))
-            flip_point_index += 2
+                if self.two_stage_table.goal.x <= self.table_under.goal.x and self.table_under.goal_state == LEFT:
+                    flip_point_index += 1
+                else:
+                    path.append(Point(self.table_under.goal.x, 4500))
+                    flip_point_index += 2
             self.flip_points.append((flip_point_index, self.table_under.goal_state))
         path.append(self.table_under.goal)
         flip_point_index += 1
         mid = self.make_mid_point(self.table_under, self.table_middle)
-        if self.compare_points(mid, self.table_under.goal):
+        if mid is None or self.compare_points(mid, self.table_under.goal) or self.compare_points(mid, self.table_middle.goal):
             flip_point_index += 0
         else:
             path.append(mid)
@@ -263,7 +320,7 @@ class Path(FlipPoint):
         self.flip_points.append((flip_point_index, self.table_middle.goal_state))
         flip_point_index += 1
         mid = self.make_mid_point(self.table_middle, self.table_up)
-        if self.compare_points(mid, self.table_middle.goal):
+        if mid is None or self.compare_points(mid, self.table_middle.goal) or self.compare_points(mid, self.table_up.goal):
             flip_point_index += 0
         else:
             path.append(mid)
@@ -276,14 +333,6 @@ class Path(FlipPoint):
         self.make_flip_point2(self.zone)
         points_1 = self.make_path()
         distance_1 = self.get_distance(points_1)
-
-        #self.make_simple_flip_points(self.zone)
-        #points_2 = self.make_path()
-        #distance_2 = self.get_distance(points_2)
-        #if distance_1 < distance_2:
-        #    return points_1
-        #else:
-        #    return points_2
         return points_1
 
     def get_flip_point(self):
