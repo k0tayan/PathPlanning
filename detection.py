@@ -30,11 +30,10 @@ detection = True
 sc = 1
 cd_start = sys.maxsize
 view_mode = 0 # 0=thresh 1=path 2=standing_detection
-sumc = 0
 result = [None, None, None]
 auto_change = True
 result_image = None
-suma = np.array([])
+standing_detection = True
 
 window_name = 'PathPlanning'
 path_window_name = 'Path'
@@ -105,11 +104,11 @@ try:
 
             # 横の消すやつ
             if Config.zone:
-                pts = np.array([[0, 0], [remove_side*10, 0], [0, height]])
-                color_image_copy = cv2.fillPoly(color_image_copy, pts=[pts], color=Color.red)
+                pts = np.array([[0, 0], [remove_side * 10, 0], [0, height]])
+                color_image = cv2.fillPoly(color_image, pts=[pts], color=Color.red)
             else:
                 pts = np.array([[remove_side * 50, 0], [width, 0], [width, height]])
-                color_image_copy = cv2.fillPoly(color_image_copy, pts=[pts], color=Color.blue)
+                color_image = cv2.fillPoly(color_image, pts=[pts], color=Color.blue)
 
             # ブラーをかける
             color_image = cv2.medianBlur(color_image, 5)
@@ -140,19 +139,20 @@ try:
                     sc += 1
 
                 # ペットボトルが立っているかの検出
-                if not util.processing_standing_detection:
-                    util.check_standing(for_check, table_set)
-                    table_set.under.standing = None
-                    table_set.middle.standing = None
-                    table_set.up.standing = None
+                if standing_detection:
+                    if not util.processing_standing_detection:
+                        util.check_standing(for_check, table_set)
+                        table_set.under.standing = None
+                        table_set.middle.standing = None
+                        table_set.up.standing = None
 
-                if table_set.up.standing is not None:
-                    util.processing_standing_detection = False
-                    result = [table_set.under.standing, table_set.middle.standing, table_set.up.standing]
-                    # util.log_standing(table_set)
-                    # 立っていたらTrue、立っていなかったらFalse
-                    plan.set_result(table_set.under.standing, table_set.middle.standing,
-                                 table_set.up.standing)
+                    if table_set.up.standing is not None:
+                        util.processing_standing_detection = False
+                        result = [table_set.under.standing, table_set.middle.standing, table_set.up.standing]
+                        # util.log_standing(table_set)
+                        # 立っていたらTrue、立っていなかったらFalse
+                        plan.set_result(table_set.under.standing, table_set.middle.standing,
+                                     table_set.up.standing)
 
                 # テーブル検出モード
                 if k == ord('b'):
@@ -171,6 +171,7 @@ try:
 
             # テーブル検出
             if detection:
+                util.processing_standing_detection = False
                 thresh[:horizon, :] = 0
                 # thresh[:, 1165:] = 0
                 # thresh[336:, 1000:] = 0
@@ -292,13 +293,13 @@ try:
                 images = np.hstack((color_image_copy, thresh))
 
             # threshウインドウのみthreshを表示
-            images_for_thersh = np.hstack((color_image_copy, thresh))
+            images_for_thresh = np.hstack((color_image_copy, thresh))
             # ウインドウサイズがでかくなりすぎるので、縮小
             images = cv2.resize(images, (int(1280 * 0.65), int(480 * 0.65)))
-            images_for_thersh = cv2.resize(images_for_thersh, (int(1280 * 0.65), int(480 * 0.65)))
+            images_for_thresh = cv2.resize(images_for_thresh, (int(1280 * 0.65), int(480 * 0.65)))
             # 表示
             cv2.imshow(window_name, images)
-            cv2.imshow(bar_window_name, images_for_thersh)
+            cv2.imshow(bar_window_name, images_for_thresh)
 
             # 終了
             if k == ord('q'):
