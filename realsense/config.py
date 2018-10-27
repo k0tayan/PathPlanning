@@ -8,9 +8,11 @@ class Config:
     radius_filter_side = (100, 20)
     radius_filter_front = (110, 22)
     distance_filter_front = (2.4, 5.3)
-    tensorflow = True
+    tensorflow = False
+    custom_vision = True
     width = 1280
     height = 720
+    seconds = 10
 
 
 class Path:
