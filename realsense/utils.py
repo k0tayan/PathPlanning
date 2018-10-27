@@ -13,6 +13,8 @@ import json
 import os
 import time
 from keras.models import load_model
+from .predict import initialize, predict_image, predict_url
+from PIL import Image
 
 
 def randstr(n):
@@ -28,6 +30,7 @@ class Utils(Config, Field, Path):
         self.model = load_model(self.keras_green_model)
         self.log = True
         self.processing_standing_detection = False
+        self.start_standing_detection_time = 0
 
         data = np.loadtxt(self.field_max_right, delimiter=',')
         self.field_max_right_res = np.polyfit(data[:, 1], data[:, 0], 1)
@@ -36,6 +39,9 @@ class Utils(Config, Field, Path):
             self.settings = json.load(f)
         except:
             self.settings = {'h': 180, 's': 45, 'v': 255, 'th': 210, 'k': 10, 'rms': 9}
+
+        # Load and intialize the model
+        initialize()
 
     def is_over_field_max_right(self, table):
         x = np.poly1d(self.field_max_right_res)(table.y)
@@ -181,16 +187,53 @@ class Utils(Config, Field, Path):
         table_set.middle.standing = ret[1]
         table_set.up.standing = ret[2]
 
+    def check_by_custom_vision(self, table_set, image):
+        self.save_table_images_for_check(image, table_set)
+        image_list = [cv2.imread('./table_images/tmp/under.jpg'),
+                      cv2.imread('./table_images/tmp/middle.jpg'),
+                      cv2.imread('./table_images/tmp/up.jpg')]
+        results = list(map(predict_image, image_list))
+
+        ret = np.array([])
+        for result in results:
+            if len(result['predictions']) > 1:
+                stand_pre = 0
+                fallen_down_pre = 0
+                for re in result['predictions']:
+                    if re['tagName'] == 'stand':
+                        stand_pre = re['probability']
+                    elif re['tagName'] == 'fallendown':
+                        fallen_down_pre = re['probability']
+                if stand_pre > fallen_down_pre:
+                    r = 'stand'
+                else:
+                    r = 'fallendown'
+            else:
+                r = result['predictions'][0]['tagName']
+            ret = np.append(ret, r)
+        print(ret)
+        logging.info(f'END STANDING DETECTION:{round(time.time() - self.start_standing_detection_time, 3)}[sec]')
+        ret = ret == 'stand'
+        table_set.under.standing = ret[0]
+        table_set.middle.standing = ret[1]
+        table_set.up.standing = ret[2]
+
     def check_standing(self, color_image_for_save, table_set):
         self.log = True
         self.processing_standing_detection = True
+        self.start_standing_detection_time = time.time()
         logging.info('START STANDING DETECTION')
-        under = self.get_under_table_boundingbox(color_image_for_save, table_set, 15)
-        middle = self.get_middle_table_boundingbox(color_image_for_save, table_set, 15)
-        up = self.get_up_table_boundingbox(color_image_for_save, table_set, 15)
+        under = self.get_under_table_boundingbox(color_image_for_save, table_set, 20)
+        middle = self.get_middle_table_boundingbox(color_image_for_save, table_set, 20)
+        up = self.get_up_table_boundingbox(color_image_for_save, table_set, 20)
         if self.tensorflow:
             image_list = [[under, 0], [middle, 1], [up, 2]]
             thread = threading.Thread(target=self.check_by_tensorflow, args=(table_set, image_list), daemon=True, )
+            thread.start()
+        elif self.custom_vision:
+            image_list = [under, middle, up]
+            # self.check_by_custom_vision(table_set, image_list)
+            thread = threading.Thread(target=self.check_by_custom_vision, args=(table_set, color_image_for_save), daemon=True, )
             thread.start()
         else:
             image_list = [under, middle, up]
@@ -307,4 +350,12 @@ class Utils(Config, Field, Path):
         cv2.imwrite(f'./table_images/new/middle_{randstr(10)}.jpg',
                     self.get_middle_table_boundingbox(image, table_set, y_offset))
         cv2.imwrite(f'./table_images/new/up_{randstr(10)}.jpg',
+                    self.get_up_table_boundingbox(image, table_set, y_offset))
+
+    def save_table_images_for_check(self, image, table_set, y_offset=15):
+        cv2.imwrite('./table_images/tmp/under.jpg',
+                      self.get_under_table_boundingbox(image, table_set, y_offset))
+        cv2.imwrite('./table_images/tmp/middle.jpg',
+                    self.get_middle_table_boundingbox(image, table_set, y_offset))
+        cv2.imwrite('./table_images/tmp/up.jpg',
                     self.get_up_table_boundingbox(image, table_set, y_offset))
