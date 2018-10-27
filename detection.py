@@ -14,7 +14,6 @@ path = os.path.dirname(os.path.abspath(__file__))
 send = True
 width = Config.width
 height = Config.height
-only_view = False
 mode = Config.mode
 pipeline = rs.pipeline()
 config = rs.config()
@@ -204,9 +203,6 @@ try:
                     (x, y), radius = cv2.minEnclosingCircle(cnt)
                     center = (int(x), int(y))
                     radius = int(radius)
-                    if only_view:
-                        color_image_copy = cv2.circle(color_image_copy, center, radius,
-                                                      Color.purple, 2)
                     dist = depth.get_distance(int(x), int(y))
                     table = Table(center, radius, dist, (x, y))
                     tables.append(table)
@@ -228,7 +224,7 @@ try:
                 # Y座標が小さい順にソート
                 tables.sort(key=util.return_center_y)
 
-                if len(tables) == 3 and not only_view:
+                if len(tables) == 3:
                     try:
                         rtype = table_set.update(tables[0], tables[1], tables[2])
                         # under tableを描画
