@@ -1,7 +1,6 @@
 from .sd.label_image import StandingDetection
 from .config import *
 from .objects import *
-import functools
 import threading
 import coloredlogs, logging
 import cv2
@@ -13,8 +12,8 @@ import json
 import os
 import time
 from keras.models import load_model
-from .predict import initialize, predict_image, predict_url
-from PIL import Image
+from .predict import initialize, predict_image
+from .types import Types
 
 
 def randstr(n):
@@ -22,7 +21,7 @@ def randstr(n):
     return random_str
 
 
-class Utils(Config, Field, Path):
+class Utils(Config, Field, Path, Types):
     def __init__(self):
         self.path = os.path.dirname(os.path.abspath(__file__))
         self.nothing = lambda x: x
@@ -63,7 +62,7 @@ class Utils(Config, Field, Path):
         return a.radius
 
     def radius_filter(self, a):
-        return self.radius_filter_front[0] > a.radius > self.radius_filter_front[1]
+        return self.radius_filter_front[0] < a.radius < self.radius_filter_front[1]
 
     def distance_filter(self, a):
         return self.distance_filter_front[0] < a.dist < self.distance_filter_front[1]
@@ -182,10 +181,8 @@ class Utils(Config, Field, Path):
         # tensorflow
         sd = StandingDetection()
         ret = np.array(list(map(sd.detect, image_list)))
-        ret = ret == 'stand'
-        table_set.under.standing = ret[0]
-        table_set.middle.standing = ret[1]
-        table_set.up.standing = ret[2]
+        ret = ret == self.stand
+        table_set.under.standing, table_set.middle.standing, table_set.up.standing = ret
 
     def check_by_custom_vision(self, table_set, image):
         self.save_table_images_for_check(image, table_set)
@@ -200,23 +197,21 @@ class Utils(Config, Field, Path):
                 stand_pre = 0
                 fallen_down_pre = 0
                 for re in result['predictions']:
-                    if re['tagName'] == 'stand':
+                    if re['tagName'] == self.stand:
                         stand_pre = re['probability']
-                    elif re['tagName'] == 'fallendown':
+                    elif re['tagName'] == self.fallendown:
                         fallen_down_pre = re['probability']
                 if stand_pre > fallen_down_pre:
-                    r = 'stand'
+                    r = self.stand
                 else:
-                    r = 'fallendown'
+                    r = self.fallendown
             else:
                 r = result['predictions'][0]['tagName']
             ret = np.append(ret, r)
         print(ret)
         logging.info(f'END STANDING DETECTION:{round(time.time() - self.start_standing_detection_time, 3)}[sec]')
-        ret = ret == 'stand'
-        table_set.under.standing = ret[0]
-        table_set.middle.standing = ret[1]
-        table_set.up.standing = ret[2]
+        ret = ret == self.stand
+        table_set.under.standing, table_set.middle.standing, table_set.up.standing = ret
 
     def check_standing(self, color_image_for_save, table_set):
         self.log = True
