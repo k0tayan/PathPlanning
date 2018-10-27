@@ -5,14 +5,16 @@ class Config:
     side = 0  # 横からとるか side=1　横から撮る side=0 前から撮る
     use_moving_average = 1  # 中心座標で距離を推定する場合で、移動平均を使うか　使う=1 使わない=0
     setting_path = '/settings.json'
-    radius_filter_side = (100, 20)
-    radius_filter_front = (110, 22)
+    radius_filter_side = (20, 100)
+    radius_filter_front = (22, 110)
     distance_filter_front = (2.4, 5.3)
     tensorflow = False
     custom_vision = True
     width = 1280
     height = 720
     seconds = 10
+    send = True
+    use_standing_detection = True
 
 
 class Path:
