@@ -68,7 +68,7 @@ class Utils(Config, Field, Path, Types):
         return self.distance_filter_front[0] < a.dist < self.distance_filter_front[1]
 
     def put_text(self, img: object, text: object, pos: object, color: object, size: object = 1,
-                 weight: object = 1) -> object:
+                 weight: object = 1):
         return cv2.putText(img, text, tuple(pos), cv2.FONT_HERSHEY_TRIPLEX, size, color, weight, cv2.LINE_AA)
 
     def rectangle(self, image, center, radius, weight=2):
@@ -185,28 +185,40 @@ class Utils(Config, Field, Path, Types):
         table_set.under.standing, table_set.middle.standing, table_set.up.standing = ret
 
     def check_by_custom_vision(self, table_set, image):
-        self.save_table_images_for_check(image, table_set)
+        self.save_table_images_for_check(image, table_set, 0)
         image_list = [cv2.imread('./table_images/tmp/under.jpg'),
                       cv2.imread('./table_images/tmp/middle.jpg'),
                       cv2.imread('./table_images/tmp/up.jpg')]
-        results = list(map(predict_image, image_list))
+        # results = list(map(predict_image, image_list))
+
+        results = []
+        results.append(predict_image(image_list[0]))
+        results.append(predict_image(image_list[1]))
+        results.append(predict_image(image_list[2]))
 
         ret = np.array([])
         for result in results:
             if len(result['predictions']) > 1:
                 stand_pre = 0
                 fallen_down_pre = 0
+                fallen_pre = 0
                 for re in result['predictions']:
-                    if re['tagName'] == self.stand:
+                    tag = re['tagName']
+                    if tag == 'stand':
                         stand_pre = re['probability']
-                    elif re['tagName'] == self.fallendown:
+                    elif tag == 'fallendown':
                         fallen_down_pre = re['probability']
+                    elif tag == 'fallen':
+                        fallen_pre = re['probability']
+                    fallen_down_pre = max(fallen_down_pre, fallen_pre)
                 if stand_pre > fallen_down_pre:
-                    r = self.stand
+                    r = 'stand'
                 else:
-                    r = self.fallendown
+                    r = 'fallendown'
             else:
                 r = result['predictions'][0]['tagName']
+                if r == 'fallen':
+                    r = 'fallendown'
             ret = np.append(ret, r)
         print(ret)
         logging.info(f'END STANDING DETECTION:{round(time.time() - self.start_standing_detection_time, 3)}[sec]')
@@ -309,7 +321,7 @@ class Utils(Config, Field, Path, Types):
             cv2.line(sim, (953, 180), (1100, 25), Color.blue, 6)
         return sim
 
-    def make_distance_send(self, tables):
+    def make_distance_to_send(self, tables):
         t = T()
         if self.zone:
             t.under = int(tables.under.dist * 1000)
