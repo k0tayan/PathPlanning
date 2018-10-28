@@ -11,7 +11,7 @@ from path_planning import PathPlanning
 
 path = os.path.dirname(os.path.abspath(__file__))
 
-send = True
+send = Config.send
 width = Config.width
 height = Config.height
 mode = Config.mode
@@ -22,17 +22,14 @@ config.enable_stream(rs.stream.color, width, height, rs.format.bgr8, 30)
 pipeline.start(config)
 util = Utils()
 table_set = Tables()
-func = ApproximationFunction()
 plan = PathPlanning(send=send)
 timer = time.time()
-detection = True
+table_detection = True
 sc = 1
-cd_start = sys.maxsize
 view_mode = 0 # 0=thresh 1=path 2=standing_detection
 result = [None, None, None]
 auto_change = True
 result_image = None
-standing_detection = True
 
 window_name = 'PathPlanning'
 path_window_name = 'Path'
@@ -128,7 +125,7 @@ try:
             thresh = cv2.dilate(erode, kernel)
 
             # テーブルの検出が終了していたら
-            if not detection:
+            if not table_detection:
                 util.put_info_by_set(color_image_copy, table_set, Color.black)
                 result_image = util.put_standing_detection_result(color_image_copy, table_set, result)
                 # 画像収集
@@ -138,7 +135,7 @@ try:
                     sc += 1
 
                 # ペットボトルが立っているかの検出
-                if standing_detection:
+                if Config.use_standing_detection:
                     if not util.processing_standing_detection:
                         util.check_standing(for_check, table_set)
                         table_set.under.standing = None
@@ -159,7 +156,7 @@ try:
 
                 # 3秒おきに送信
                 if time.time() - timer > 3:
-                    ret = util.make_distance_send(table_set)
+                    ret = util.make_distance_to_send(table_set)
                     plan.main([ret.under, ret.middle, ret.up, Config.zone])
                     timer = time.time()
 
@@ -169,7 +166,7 @@ try:
                             view_mode = 0
 
             # テーブル検出
-            if detection:
+            if table_detection:
                 util.processing_standing_detection = False
                 thresh[:horizon, :] = 0
                 # thresh[:, 1165:] = 0
@@ -207,11 +204,6 @@ try:
                     table = Table(center, radius, dist, (x, y))
                     tables.append(table)
 
-                # 距離でフィルタ
-                # tables = list(filter(util.distance_filter, tables))
-
-                # tables = list(filter(util.is_table, tables))
-
                 # 半径でフィルタ
                 tables = list(filter(util.radius_filter, tables))
 
@@ -235,7 +227,7 @@ try:
                         color_image_copy = util.put_info(color_image_copy, table_set.up)
 
                         if time.time() - timer > 3:
-                            ret = util.make_distance_send(table_set)
+                            ret = util.make_distance_to_send(table_set)
                             plan.main([ret.under, ret.middle, ret.up, Config.zone])
                             timer = time.time()
 
@@ -245,14 +237,7 @@ try:
                                     view_mode = 0
 
                         if k == ord('n'):
-                            detection = False
-                            logging.info('END DETECTION')
-
-                        if k == 32:  # SPACE
-                            cd_start = time.time()
-
-                        if time.time() - cd_start > Config.seconds:
-                            detection = False
+                            table_detection = False
                             logging.info('END DETECTION')
 
                     except Exception as error:
