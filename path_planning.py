@@ -5,6 +5,7 @@ from bottleflip import *
 import sys
 import coloredlogs, logging
 import threading
+import cv2
 
 coloredlogs.install()
 random_move = False
@@ -18,6 +19,8 @@ class PathPlanning:
         self.result = [False, False, False]
         self.log = True
         self.tcp = None
+
+        self.error = False
 
     def send_packet(self, packet):
         try:
@@ -36,6 +39,7 @@ class PathPlanning:
             return coord
 
     def main(self, arg, show=False):
+        self.error = False
         # plot setting
         plt.figure()
         ax = plt.axes()
@@ -91,18 +95,19 @@ class PathPlanning:
 
         # path planning
         points = path.path_planning()
-        try:
-            send_points = list(points)
-            flip_points = path.get_flip_point()
-            for i in range(8 - len(send_points)):
-                send_points.append(Point(0, 0))
-            if self.send:
+        send_points = list(points)
+        flip_points = path.get_flip_point()
+        for i in range(8 - len(send_points)):
+            send_points.append(Point(0, 0))
+        if self.send:
+            try:
                 self.tcp = Tcp(host='192.168.0.14', port=10001)
                 packet = self.tcp.create_packet(send_points, flip_points, self.result)
                 thread = threading.Thread(target=self.send_packet, args=(packet,), daemon=True)
                 thread.start()
-        except Exception as error:
-            logging.error(str(error))
+            except Exception as error:
+                logging.error(str(error))
+                self.error = True
         points_x = [point.x for point in points]
         points_y = [point.y for point in points]
 
@@ -126,8 +131,13 @@ class PathPlanning:
             plt.show()
         plt.close()
 
+        return path, flip_points, self.error
+
     def set_result(self, under, middle, up):
         self.result = [under, middle, up]
+
+    def set_result_by_list(self, result):
+        self.result = result
 
 
 if __name__ == '__main__':
