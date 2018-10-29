@@ -185,7 +185,7 @@ class Utils(Config, Field, Path, Types):
         table_set.under.standing, table_set.middle.standing, table_set.up.standing = ret
 
     def check_by_custom_vision(self, table_set, image):
-        self.save_table_images_for_check(image, table_set, 0)
+        self.save_table_images_for_check(image, table_set, 20)
         image_list = [cv2.imread('./table_images/tmp/under.jpg'),
                       cv2.imread('./table_images/tmp/middle.jpg'),
                       cv2.imread('./table_images/tmp/up.jpg')]
@@ -337,7 +337,7 @@ class Utils(Config, Field, Path, Types):
             t.middle = self.FIELD_WIDTH - (int(tables.middle.dist * 1000) + self.TABLE_WIDTH / 2)
             t.up = self.FIELD_WIDTH - (int(tables.up.dist * 1000) + self.TABLE_WIDTH / 2)
 
-        t.validate()
+        t.fix()
         return t
 
     def save_param(self, h, s, v, lv, th, kn, rms):
