@@ -5,19 +5,18 @@ class T:
         self.middle = 0
         self.up = 0
 
-    def validate(self):
-        if self.under < 1250:
-            self.under = 1250
-        if self.middle < 1250:
-            self.middle = 1250
-        if self.up < 1250:
-            self.up = 1250
-        if self.under > 3750:
-            self.under = 3750
-        if self.middle > 3750:
-            self.middle = 3750
-        if self.up > 3750:
-            self.up = 3750
+    def __fix(self, coord):
+        if coord < 1250:
+            return 1250
+        elif coord > 3750:
+            return 3750
+        else:
+            return coord
+
+    def fix(self):
+        self.under = self.__fix(self.under)
+        self.middle = self.__fix(self.middle)
+        self.up = self.__fix(self.up)
 
 
 class Table(Config):
@@ -32,3 +31,23 @@ class Table(Config):
         self.x = center[0]
         self.y = center[1]
         self.standing = None
+
+    def is_table(self):
+        # 半径でフィルタ
+        return self.radius_filter_front[0] < self.radius < self.radius_filter_front[1]
+
+    def __lt__(self, other):
+        return self.radius < other.radius
+
+class Parameter:
+    def __init__(self):
+        self.h = None
+        self.s = None
+        self.v = None
+        self.lv = None
+        self.th = None
+        self.kn = None
+        self.horizon = None
+        self.vertical = None
+        self.remove_side = None
+        self.zone = None
