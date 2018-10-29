@@ -90,6 +90,54 @@ class App(Parameter, Utils):
             pts = np.array([[self.remove_side * 50, 0], [self.width, 0], [self.width, self.height]])
             cv2.fillPoly(color_image, pts=[pts], color=Color.blue)
 
+    def draw(self, color_image_for_show, thresh):
+        # 画面描画
+        # 画面枠
+        if self.zone:
+            cv2.rectangle(color_image_for_show, (0, 0), (self.width, self.height), Color.red, 20)
+        else:
+            cv2.rectangle(color_image_for_show, (0, 0), (self.width, self.height), Color.blue, 20)
+
+        if self.detection_success:
+            # under tableを描画
+            color_image_for_show = self.put_info(color_image_for_show, self.table_set.under)
+            # middle tableを描画
+            color_image_for_show = self.put_info(color_image_for_show, self.table_set.middle)
+            # up tableを描画
+            color_image_for_show = self.put_info(color_image_for_show, self.table_set.up)
+
+        # 二値をカラーに
+        thresh = cv2.applyColorMap(cv2.convertScaleAbs(thresh), cv2.COLORMAP_BONE)
+        # threshウインドウのみthreshを表示
+        images_for_thresh = np.hstack((color_image_for_show, thresh))
+
+        if self.table_detection:
+            path_view = cv2.imread("output/tmp.png")
+            back = np.full((self.height, self.width, 3), 255, dtype=np.uint8)
+            path_view = cv2.resize(path_view, (1210, self.height))
+            back[0:self.height, 70:self.width] = path_view
+            color_image_for_show = np.hstack((color_image_for_show, back))
+        else:
+            # 立っているかの判定情報を描画
+            self.put_info_by_set(color_image_for_show, self.table_set, Color.black)
+            self.standing_result_image = self.put_standing_detection_result(color_image_for_show, self.table_set,
+                                                                            self.bottle_result)
+
+            # todo 今は立っているかの判定しか表示していないので経路も切り替えて表示するようにする
+            if self.standing_result_image is not None:
+                color_image_for_show = np.hstack((color_image_for_show, self.standing_result_image))
+            else:
+                color_image_for_show = np.hstack((color_image_for_show, thresh))
+
+        # ウインドウサイズがでかくなりすぎるので、縮小
+        color_image_for_show = cv2.resize(color_image_for_show, (int(1280 * 0.65), int(480 * 0.65)))
+        images_for_thresh = cv2.resize(images_for_thresh, (int(1280 * 0.65), int(480 * 0.65)))
+
+        # 表示
+        cv2.imshow(window_name, color_image_for_show)
+        cv2.imshow(bar_window_name, images_for_thresh)
+
+
     def analyze(self):
         # スライダーの値を取得
         self.get_param()
@@ -191,64 +239,18 @@ class App(Parameter, Utils):
                     # 立っていたらTrue、立っていなかったらFalse
                     self.planner.set_result_by_list(self.bottle_result)
 
-        if self.detection_success:
+        if self.detection_success and not self.table_detection:
             global timer
             if time.time() - timer > 3:  # 3秒に1回実行
                 # 画面内の座標を送信する座標に変換
                 ret = self.make_distance_to_send(self.table_set)
                 # 経路計画
-                _, _, e = self.planner.main([ret.under, ret.middle, ret.up, self.zone])
+                self.planner.main([ret.under, ret.middle, ret.up, self.zone])
                 self.yukari.play_finish_path_planning()
-
-                if e:
-                    self.yukari.play_cant_reach_to_host()
                 timer = time.time()
 
-        # 画面描画
-        # 画面枠
-        if self.zone:
-            cv2.rectangle(color_image_for_show, (0, 0), (self.width, self.height), Color.red, 20)
-        else:
-            cv2.rectangle(color_image_for_show, (0, 0), (self.width, self.height), Color.blue, 20)
-
-        if self.detection_success:
-            # under tableを描画
-            color_image_for_show = self.put_info(color_image_for_show, self.table_set.under)
-            # middle tableを描画
-            color_image_for_show = self.put_info(color_image_for_show, self.table_set.middle)
-            # up tableを描画
-            color_image_for_show = self.put_info(color_image_for_show, self.table_set.up)
-
-        # 二値をカラーに
-        thresh = cv2.applyColorMap(cv2.convertScaleAbs(thresh), cv2.COLORMAP_BONE)
-        # threshウインドウのみthreshを表示
-        images_for_thresh = np.hstack((color_image_for_show, thresh))
-
-        if self.table_detection:
-            path_view = cv2.imread("output/tmp.png")
-            back = np.full((self.height, self.width, 3), 255, dtype=np.uint8)
-            path_view = cv2.resize(path_view, (1210, self.height))
-            back[0:self.height, 70:self.width] = path_view
-            color_image_for_show = np.hstack((color_image_for_show, back))
-        else:
-            # 立っているかの判定情報を描画
-            self.put_info_by_set(color_image_for_show, self.table_set, Color.black)
-            self.standing_result_image = self.put_standing_detection_result(color_image_for_show, self.table_set,
-                                                                            self.bottle_result)
-
-            # todo 今は立っているかの判定しか表示していないので経路も切り替えて表示するようにする
-            if self.standing_result_image is not None:
-                color_image_for_show = np.hstack((color_image_for_show, self.standing_result_image))
-            else:
-                color_image_for_show = np.hstack((color_image_for_show, thresh))
-
-        # ウインドウサイズがでかくなりすぎるので、縮小
-        color_image_for_show = cv2.resize(color_image_for_show, (int(1280 * 0.65), int(480 * 0.65)))
-        images_for_thresh = cv2.resize(images_for_thresh, (int(1280 * 0.65), int(480 * 0.65)))
-
-        # 表示
-        cv2.imshow(window_name, color_image_for_show)
-        cv2.imshow(bar_window_name, images_for_thresh)
+        # 描画
+        self.draw(color_image_for_show, thresh)
 
     def key_check(self):
         # キーの入力
@@ -257,7 +259,7 @@ class App(Parameter, Utils):
         # ペットボトル判定シーケンスに移行
         if key == ord('n') and self.table_detection:
             # todo ゆかりさんボイス
-            self.yukari.play_move_to_check_standing_sequence()
+            # self.yukari.play_move_to_check_standing_sequence()
             self.table_detection = False
             logging.info('END DETECTION')
 
