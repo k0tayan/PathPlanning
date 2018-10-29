@@ -31,12 +31,13 @@ class PathPlanning:
             logging.error(str(error))
 
     def fix(self, coord):
-        if coord < 1350:
-            return 1350
-        elif coord > 3550:
-            return 3550
-        else:
-            return coord
+        # if coord < 1350:
+        #     return 1350
+        # elif coord > 3550:
+        #    return 3550
+        #else:
+        #    return coord
+        return coord
 
     def main(self, arg, show=False):
         self.error = False
@@ -120,10 +121,15 @@ class PathPlanning:
 
         ax.plot(points_x, points_y, '.', color='red')
         ax.plot(points_x, points_y, '-', color='green')
-        plt.savefig('output/tmp.png')
+        try:
+            plt.savefig('output/tmp.png')
+        except:
+            pass
         if self.log:
             logging.info("path_planning start")
             print(f"移動距離:{path.get_distance(points)}mm")
+            p = list(map(str, points))
+            logging.info(f"points:{p}")
             logging.info(f"flip_points:{path.get_flip_point()}")
             logging.info("path_planning end")
         self.log = False
@@ -131,7 +137,7 @@ class PathPlanning:
             plt.show()
         plt.close()
 
-        return path, flip_points, self.error
+        return points, flip_points, self.error
 
     def set_result(self, under, middle, up):
         self.result = [under, middle, up]
