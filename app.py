@@ -12,19 +12,27 @@ from yukari.player import Yukari
 window_name = 'PathPlanning'
 path_window_name = 'Path'
 bar_window_name = 'setting'
+field_window_name = 'Field'
 timer = 0  # 初期化
 sc = 1
 coloredlogs.install()
 
-class App(Parameter, Utils):
+
+class App(Parameter, Utils, FieldView):
     def __init__(self):
         super(Parameter, self).__init__()
         super(Utils, self).__init__()
-        self.pipeline = rs.pipeline()
-        config = rs.config()
-        config.enable_stream(rs.stream.depth, self.width, self.height, rs.format.z16, 30)
-        config.enable_stream(rs.stream.color, self.width, self.height, rs.format.bgr8, 30)
-        self.pipeline.start(config)
+        super(FieldView, self).__init__()
+        if self.use_realsense:
+            self.pipeline = rs.pipeline()
+            config = rs.config()
+            config.enable_stream(rs.stream.depth, self.width, self.height, rs.format.z16, 30)
+            config.enable_stream(rs.stream.color, self.width, self.height, rs.format.bgr8, 30)
+            self.pipeline.start(config)
+        else:
+            self.capture = cv2.VideoCapture(1)
+            self.capture.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)  # カメラ画像の横幅を1280に設定
+            self.capture.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)  # カメラ画像の縦幅を720に設定
         self.table_set = Tables()
         self.planner = PathPlanning(send=self.send)
         self.table_detection = True
@@ -35,10 +43,15 @@ class App(Parameter, Utils):
         self.standing_result_image = None
         self.quit = False
         self.yukari = Yukari()
+        self.remove_separator_middle = False
 
         cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
         cv2.moveWindow(window_name, 450, 0, )
         cv2.namedWindow(bar_window_name, cv2.WINDOW_AUTOSIZE)
+        cv2.namedWindow(field_window_name, cv2.WND_PROP_FULLSCREEN)
+        # cv2.setWindowProperty(field_window_name, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+        kizunaai = cv2.imread('./kizunaai/kizunaai.jpg')
+        cv2.imshow(field_window_name, kizunaai)
         cv2.createTrackbar('H', bar_window_name, 0, 255, int)
         cv2.createTrackbar('S', bar_window_name, 0, 255, int)
         cv2.createTrackbar('V', bar_window_name, 0, 255, int)
@@ -46,6 +59,7 @@ class App(Parameter, Utils):
         cv2.createTrackbar('threshold', bar_window_name, 0, 255, int)
         cv2.createTrackbar('kernel', bar_window_name, 0, 100, int)
         cv2.createTrackbar('remove_side', bar_window_name, 0, 30, int)
+        cv2.createTrackbar('remove_side_e', bar_window_name, 0, self.height, int)
         cv2.createTrackbar('zone', bar_window_name, 0, 1, int)
 
         cv2.setTrackbarPos('H', bar_window_name, self.settings['h'])
@@ -55,6 +69,7 @@ class App(Parameter, Utils):
         cv2.setTrackbarPos('threshold', bar_window_name, self.settings['th'])
         cv2.setTrackbarPos('kernel', bar_window_name, self.settings['k'])
         cv2.setTrackbarPos('remove_side', bar_window_name, self.settings['rms'])
+        cv2.setTrackbarPos('remove_side_e', bar_window_name, int(self.height / 3))
         cv2.setTrackbarPos('zone', bar_window_name, self.zone)
 
         logging.info('START DETECTION')
@@ -68,10 +83,11 @@ class App(Parameter, Utils):
         self.th = cv2.getTrackbarPos('threshold', bar_window_name)
         self.kn = cv2.getTrackbarPos('kernel', bar_window_name)
         self.remove_side = cv2.getTrackbarPos('remove_side', bar_window_name)
+        self.remove_side_e = cv2.getTrackbarPos('remove_side_e', bar_window_name)
         self.zone = cv2.getTrackbarPos('zone', bar_window_name)
 
     def get_data_from_realsense(self) -> (np.asanyarray, np.asanyarray):
-        # 深度と画像データを取得
+        # realsenseから深度と画像データを取得
         frames = self.pipeline.wait_for_frames()
         depth = frames.get_depth_frame()
         color_frame = frames.get_color_frame()
@@ -81,14 +97,54 @@ class App(Parameter, Utils):
         np_depth = np.asanyarray(depth_data)
         return color_image, np_depth
 
+    def get_data_from_webcam(self) -> (np.asanyarray, None):
+        # ウェブカメラから画像データを取得
+        ret, frame = self.capture.read()
+        return frame, None
+
+    def get_data(self):
+        if self.use_realsense:
+            return self.get_data_from_realsense()
+        else:
+            return self.get_data_from_webcam()
+
     def remove_separator(self, color_image):
         # セパレータ消すやつ
         if self.zone:
-            pts = np.array([[0, 0], [self.remove_side * 10, 0], [0, self.height]])
-            cv2.fillPoly(color_image, pts=[pts], color=Color.red)
+            if self.remove_separator_middle:
+                x = self.height
+                y = -(self.remove_side * 20)
+                y_x = y / x
+                f = lambda a: int(y_x * a - y)
+
+                pts = np.array([[0, 0], [self.remove_side * 20, 0], [f(self.remove_side_e), self.remove_side_e],
+                                [0, self.remove_side_e]])
+                cv2.fillPoly(color_image, pts=[pts], color=Color.red)
+
+                pts = np.array([[0, self.remove_side_e + 150], [f(self.remove_side_e + 150), self.remove_side_e + 150],
+                                [0, self.height]])
+                cv2.fillPoly(color_image, pts=[pts], color=Color.red)
+            else:
+                pts = np.array([[0, 0], [self.remove_side * 20, 0], [0, self.height]])
+                cv2.fillPoly(color_image, pts=[pts], color=Color.red)
         else:
-            pts = np.array([[self.remove_side * 50, 0], [self.width, 0], [self.width, self.height]])
-            cv2.fillPoly(color_image, pts=[pts], color=Color.blue)
+            if self.remove_separator_middle:
+                x = self.height
+                y = -(self.width - self.remove_side * 50)
+                y_x = y / x
+                f = lambda a: self.width - int(y_x * a - y)
+
+                pts = np.array([[self.remove_side * 50, 0], [f(self.remove_side_e), self.remove_side_e],
+                                [self.width, self.remove_side_e], [self.width, 0]])
+                cv2.fillPoly(color_image, pts=[pts], color=Color.blue)
+
+                pts = np.array(
+                    [[f(self.remove_side_e + 150), self.remove_side_e + 150], [self.width, self.remove_side_e + 150],
+                     [self.width, self.height]])
+                cv2.fillPoly(color_image, pts=[pts], color=Color.blue)
+            else:
+                pts = np.array([[self.remove_side * 50, 0], [self.width, 0], [self.width, self.height]])
+                cv2.fillPoly(color_image, pts=[pts], color=Color.blue)
 
     def draw(self, color_image_for_show, thresh):
         # 画面描画
@@ -137,13 +193,12 @@ class App(Parameter, Utils):
         cv2.imshow(window_name, color_image_for_show)
         cv2.imshow(bar_window_name, images_for_thresh)
 
-
     def analyze(self):
         # スライダーの値を取得
         self.get_param()
 
-        # 画像データと深度データを取得
-        color_image, np_depth = self.get_data_from_realsense()
+        # データを取得
+        color_image, np_depth = self.get_data()
 
         # 画面に描画するようにcolor_imageをコピーした変数を作成
         color_image_for_show = color_image.copy()
@@ -245,7 +300,10 @@ class App(Parameter, Utils):
                 # 画面内の座標を送信する座標に変換
                 ret = self.make_distance_to_send(self.table_set)
                 # 経路計画
-                self.planner.main([ret.under, ret.middle, ret.up, self.zone])
+                points, _, _ = self.planner.main([ret.under, ret.middle, ret.up, self.zone])
+                # フィールド描画
+                field_view = self.draw_field((ret.under, ret.middle, ret.up), points)
+                cv2.imshow(field_window_name, field_view)
                 self.yukari.play_finish_path_planning()
                 timer = time.time()
 
@@ -289,6 +347,9 @@ class App(Parameter, Utils):
         if key == ord('o'):
             self.auto_change = not self.auto_change
 
+        if key == ord('e'):
+            self.remove_separator_middle = not self.remove_separator_middle
+
     def run(self):
         try:
             while True:
@@ -304,17 +365,21 @@ class App(Parameter, Utils):
 
                 except Exception as error:
                     if str(error) == "wait_for_frames cannot be called before start()":
-                        self.pipeline.stop()
-                        exit()
+                        if self.use_realsense:
+                            self.pipeline.stop()
+                            exit()
                     elif str(error) == "Frame didn't arrived within 5000":
-                        self.pipeline.stop()
-                        exit()
+                        if self.use_realsense:
+                            self.pipeline.stop()
+                            exit()
                     else:
                         logging.error(error)
         except:
             pass
         finally:
-            self.pipeline.stop()
+            if self.use_realsense:
+                self.pipeline.stop()
+
 
 if __name__ == '__main__':
     app = App()
