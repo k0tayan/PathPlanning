@@ -4,3 +4,4 @@ class Types:
     UP = 'up'
     stand = 'stand'
     fallendown = 'fallendown'
+    fallen = 'fallen'
