@@ -31,13 +31,12 @@ class PathPlanning:
             logging.error(str(error))
 
     def fix(self, coord):
-        # if coord < 1350:
-        #     return 1350
-        # elif coord > 3550:
-        #    return 3550
-        #else:
-        #    return coord
-        return coord
+        if coord < 1250:
+             return 1250
+        elif coord > 3750:
+            return 3750
+        else:
+            return coord
 
     def main(self, arg, show=False):
         self.error = False
