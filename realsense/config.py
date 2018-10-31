@@ -8,13 +8,13 @@ class Config:
     radius_filter_side = (20, 100)
     radius_filter_front = (22, 110)
     distance_filter_front = (2.4, 5.3)
-    tensorflow = False
     custom_vision = True
     width = 1280
     height = 720
     seconds = 10
-    send = True
-    use_standing_detection = True
+    send = False
+    use_standing_detection = False
+    use_realsense = False
 
 
 class Path:
@@ -28,8 +28,8 @@ class Path:
 
     keras_green_model = dir + '/realsense/sd/green_model2.h5'
 
-    red_field_image = '/Users/sho/PycharmProjects/PathPlanning/table_images/red.png'
-    blue_field_image = '/Users/sho/PycharmProjects/PathPlanning/table_images/blue.png'
+    red_field_image = dir + '/table_images/red.png'
+    blue_field_image = dir + '/table_images/blue.png'
 
 
 class Field:
