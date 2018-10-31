@@ -51,8 +51,6 @@ class Tables(Config, ApproximationFunction, Types):
         self.up.type = self.UP
         self.up.dist = self.__round(self.make_distance_up_front_by_center(up.x))
 
-        return 0
-
     def reset_standing_result(self):
         self.under.standing = None
         self.middle.standing = None
