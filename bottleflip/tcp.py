@@ -1,5 +1,6 @@
 import socket
 import struct
+from .objects import Point
 
 class Tcp:
     def __init__(self, host='192.168.0.14', port=10001):
@@ -30,8 +31,11 @@ class Tcp:
         return rcvmsg
 
     def create_packet(self, points, flip_points, result):
-        points_x = [point.x for point in points]
-        points_y = [point.y for point in points]
+        send_points = points.copy()
+        for i in range(8 - len(send_points)):
+            send_points.append(Point(0, 0))
+        points_x = [point.x for point in send_points]
+        points_y = [point.y for point in send_points]
         x_l = list(map(int, points_x))
         y_l = list(map(int, points_y))
         x_l[0] = 0
