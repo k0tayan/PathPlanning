@@ -1,6 +1,82 @@
 import cv2
-from .config import Config
+from .config import Config, Color, Path
+from .objects import Table
 import numpy as np
+
+
+class Draw(Config, Path):
+    def __init__(self):
+        pass
+
+    def put_text(self, img, text, pos, color, size=1, weight=1):
+        return cv2.putText(img, text, tuple(pos), cv2.FONT_HERSHEY_TRIPLEX, size, color, weight, cv2.LINE_AA)
+
+    def rectangle(self, image, center, radius, weight=2):
+        if self.zone:
+            color = Color.red
+        else:
+            color = Color.blue
+        x, y = center
+        color_image_copy = cv2.rectangle(image, (x - radius, y - radius), (x + radius, y + radius), color, weight)
+        return color_image_copy
+
+    def put_type_name(self, image, table: Table):
+        x, y = table.center
+        return self.put_text(image, table.type, (x - 10, y - 50), Color.black, size=1, weight=2)
+
+    def put_dist(self, image, table: Table):
+        x, y = table.center
+        return self.put_text(image, str(table.dist), (x, y + 100), Color.black, size=1, weight=2)
+
+    def put_info(self, image, table: Table):
+        c_image = self.rectangle(image, table.center, table.radius)
+        c_image = self.put_type_name(c_image, table)
+        c_image = self.put_dist(c_image, table)
+        return c_image
+
+    def put_center(self, image, table_set, color):
+        c_image = self.put_text(image, str(table_set.under.center_float), table_set.under.center,
+                                color)
+        c_image = self.put_text(c_image, str(table_set.middle.center_float), table_set.middle.center,
+                                color)
+        c_image = self.put_text(c_image, str(table_set.up.center_float), table_set.up.center,
+                                color)
+        return c_image
+
+    def put_info_by_set(self, c_image, table_set, center_color=(0, 0, 0)):
+        c_image = self.put_info(c_image, table_set.under)
+        c_image = self.put_info(c_image, table_set.middle)
+        c_image = self.put_info(c_image, table_set.up)
+        c_image = self.put_text(c_image, "Standing Dt", (10, self.height - 20), center_color, size=2, weight=2)
+        return c_image
+
+    def put_standing_detection_result(self, image, table_set, result):
+        under, middle, up = result
+        if self.zone:
+            sim = cv2.imread(self.red_field_image)
+        else:
+            sim = cv2.imread(self.blue_field_image)
+        if under:
+            cv2.circle(image, table_set.under.center, table_set.under.radius + 10, Color.light_green, 3)
+            cv2.circle(sim, (275, 220), 80, Color.red, 4)
+        elif under is not None:
+            cv2.line(sim, (205, 205), (348, 348), Color.blue, 6)
+            cv2.line(sim, (205, 348), (348, 205), Color.blue, 6)
+        if middle:
+            cv2.circle(image, table_set.middle.center, table_set.middle.radius + 10, Color.light_green, 3)
+            cv2.circle(sim, (620, 175), 80, Color.red, 4)
+        elif middle is not None:
+            cv2.line(sim, (546, 146), (699, 280), Color.blue, 6)
+            cv2.line(sim, (546, 280), (699, 146), Color.blue, 6)
+        if up:
+            cv2.circle(image, table_set.up.center, table_set.up.radius + 10, Color.light_green, 3)
+            cv2.circle(sim, (1025, 110), 80, Color.red, 4)
+        elif up is not None:
+            cv2.line(sim, (953, 25), (1100, 180), Color.blue, 6)
+            cv2.line(sim, (953, 180), (1100, 25), Color.blue, 6)
+        return sim
+
+
 class FieldView(Config):
     def __init__(self):
         pass
