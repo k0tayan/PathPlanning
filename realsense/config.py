@@ -13,9 +13,9 @@ class Config:
     width = 1280
     height = 720
     seconds = 10
-    send = True
+    send = False
     use_standing_detection = True
-    use_realsense = False
+    use_realsense = 1
 
 
 class Path:
