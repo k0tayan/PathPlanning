@@ -11,6 +11,7 @@ import os
 import time
 from .predict import initialize, predict_image
 from .types import Types
+from .detection import Tables
 
 
 def randstr(n):
@@ -64,7 +65,7 @@ class Utils(Config, Field, Path, Types):
     #    table_set.middle.standing = self.model.predict_classes(np.array([image_list[1] / 255.]), 100)[0]
     #    table_set.up.standing = self.model.predict_classes(np.array([image_list[2] / 255.]), 100)[0]
 
-    def check_by_custom_vision(self, table_set, image):
+    def check_by_custom_vision(self, table_set: Tables, image):
         self.save_table_images_for_check(image, table_set, 20)
         image_list = [cv2.imread('./table_images/tmp/under.jpg'),
                       cv2.imread('./table_images/tmp/middle.jpg'),
@@ -79,25 +80,23 @@ class Utils(Config, Field, Path, Types):
         ret = np.array([])
         for result in results:
             if len(result['predictions']) > 1:
-                stand_pre = 0
-                fallen_down_pre = 0
-                fallen_pre = 0
+                pre = 0
+                max_pre = 0
+                max_label = ''
                 for re in result['predictions']:
                     tag = re['tagName']
                     if tag == self.stand:
-                        stand_pre = re['probability']
-                        print('stand:', stand_pre)
+                        pre = re['probability']
+                        print('stand:', pre)
                     elif tag == self.fallendown:
-                        fallen_down_pre = re['probability']
-                        print('fallen_down:', fallen_down_pre)
+                        pre = re['probability']
+                        print('fallen_down:', pre)
                     elif tag == self.fallen:
-                        fallen_pre = re['probability']
-                        print('fallen:', fallen_pre)
-                    fallen_down_pre = max(fallen_down_pre, fallen_pre)
-                if stand_pre > fallen_down_pre:
-                    r = self.stand
-                else:
-                    r = self.fallendown
+                        pre = re['probability']
+                        print('fallen:', pre)
+                    max_label = tag
+                    if max_pre < pre:
+                        r = max_label
             else:
                 r = result['predictions'][0]['tagName']
                 print(result['predictions'])
@@ -106,8 +105,12 @@ class Utils(Config, Field, Path, Types):
             ret = np.append(ret, r)
         print(ret)
         logging.info(f'END STANDING DETECTION:{round(time.time() - self.start_standing_detection_time, 3)}[sec]')
-        ret = ret == self.stand
-        table_set.under.standing, table_set.middle.standing, table_set.up.standing = ret
+        ret = ret == self.fallen
+        if ret == [True, True, True]:
+            table_set.reset_standing_result()
+        else:
+            ret = ret == self.stand
+            table_set.under.standing, table_set.middle.standing, table_set.up.standing = ret
 
     def check_standing(self, color_image_for_save, table_set):
         self.log = True
