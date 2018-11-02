@@ -18,11 +18,12 @@ sc = 1
 coloredlogs.install()
 
 
-class App(Parameter, Utils, FieldView):
+class App(Parameter, Utils, FieldView, Draw, ):
     def __init__(self):
         super(Parameter, self).__init__()
         super(Utils, self).__init__()
         super(FieldView, self).__init__()
+        super(Draw, self).__init__()
         if self.use_realsense:
             self.pipeline = rs.pipeline()
             config = rs.config()
@@ -44,34 +45,10 @@ class App(Parameter, Utils, FieldView):
         self.quit = False
         self.yukari = Yukari()
         self.remove_separator_middle = False
+        self.points = None
+        self.flip_points = None
 
-        cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
-        cv2.moveWindow(window_name, 450, 0, )
-        cv2.namedWindow(bar_window_name, cv2.WINDOW_AUTOSIZE)
-        cv2.namedWindow(field_window_name, cv2.WND_PROP_FULLSCREEN)
-        # cv2.setWindowProperty(field_window_name, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
-        kizunaai = cv2.imread('./kizunaai/kizunaai.jpg')
-        cv2.imshow(field_window_name, kizunaai)
-        cv2.createTrackbar('H', bar_window_name, 0, 255, int)
-        cv2.createTrackbar('S', bar_window_name, 0, 255, int)
-        cv2.createTrackbar('V', bar_window_name, 0, 255, int)
-        cv2.createTrackbar('LV', bar_window_name, 0, 255, int)
-        cv2.createTrackbar('threshold', bar_window_name, 0, 255, int)
-        cv2.createTrackbar('kernel', bar_window_name, 0, 100, int)
-        cv2.createTrackbar('remove_side', bar_window_name, 0, 30, int)
-        cv2.createTrackbar('remove_side_e', bar_window_name, 0, self.height, int)
-        cv2.createTrackbar('zone', bar_window_name, 0, 1, int)
-
-        cv2.setTrackbarPos('H', bar_window_name, self.settings['h'])
-        cv2.setTrackbarPos('S', bar_window_name, self.settings['s'])
-        cv2.setTrackbarPos('V', bar_window_name, self.settings['v'])
-        cv2.setTrackbarPos('LV', bar_window_name, self.settings['lv'])
-        cv2.setTrackbarPos('threshold', bar_window_name, self.settings['th'])
-        cv2.setTrackbarPos('kernel', bar_window_name, self.settings['k'])
-        cv2.setTrackbarPos('remove_side', bar_window_name, self.settings['rms'])
-        cv2.setTrackbarPos('remove_side_e', bar_window_name, int(self.height / 3))
-        cv2.setTrackbarPos('zone', bar_window_name, self.zone)
-
+        self.set_track_bar_pos(self.settings)
         logging.info('START DETECTION')
 
     def get_param(self):
@@ -100,6 +77,7 @@ class App(Parameter, Utils, FieldView):
     def get_data_from_webcam(self) -> (np.asanyarray, None):
         # ウェブカメラから画像データを取得
         ret, frame = self.capture.read()
+        frame = cv2.flip(frame, -1)
         return frame, None
 
     def get_data(self):
@@ -168,18 +146,13 @@ class App(Parameter, Utils, FieldView):
         images_for_thresh = np.hstack((color_image_for_show, thresh))
 
         if self.table_detection:
-            path_view = cv2.imread("output/tmp.png")
-            back = np.full((self.height, self.width, 3), 255, dtype=np.uint8)
-            path_view = cv2.resize(path_view, (1210, self.height))
-            back[0:self.height, 70:self.width] = path_view
-            color_image_for_show = np.hstack((color_image_for_show, back))
+            color_image_for_show = np.hstack((color_image_for_show, thresh))
         else:
             # 立っているかの判定情報を描画
             self.put_info_by_set(color_image_for_show, self.table_set, Color.black)
             self.standing_result_image = self.put_standing_detection_result(color_image_for_show, self.table_set,
                                                                             self.bottle_result)
 
-            # todo 今は立っているかの判定しか表示していないので経路も切り替えて表示するようにする
             if self.standing_result_image is not None:
                 color_image_for_show = np.hstack((color_image_for_show, self.standing_result_image))
             else:
@@ -241,6 +214,8 @@ class App(Parameter, Utils, FieldView):
             # ペットボトル判定処理から戻ってきたときのためにFalseにする
             self.processing_standing_detection = False
 
+            self.points, self.flip_points = None, None
+
             # 輪郭抽出
             imgEdge, contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
@@ -290,7 +265,6 @@ class App(Parameter, Utils, FieldView):
                         play_result.append([2, self.table_set.result[2]])
                     self.yukari.play_results(play_result)
                     self.bottle_result = self.table_set.result
-                    # util.log_standing(table_set)
                     # 立っていたらTrue、立っていなかったらFalse
                     self.planner.set_result_by_list(self.bottle_result)
 
@@ -300,9 +274,11 @@ class App(Parameter, Utils, FieldView):
                 # 画面内の座標を送信する座標に変換
                 ret = self.make_distance_to_send(self.table_set)
                 # 経路計画
-                points, _, _ = self.planner.main([ret.under, ret.middle, ret.up, self.zone])
+                if self.points is None:
+                    self.points, self.flip_points = self.planner.main([ret.under, ret.middle, ret.up, self.zone])
+                self.planner.send(self.points, self.flip_points)
                 # フィールド描画
-                field_view = self.draw_field((ret.under, ret.middle, ret.up), points)
+                field_view = self.draw_field((ret.under, ret.middle, ret.up), self.points)
                 cv2.imshow(field_window_name, field_view)
                 self.yukari.play_finish_path_planning()
                 timer = time.time()
@@ -315,7 +291,7 @@ class App(Parameter, Utils, FieldView):
         key = cv2.waitKey(1)
 
         # ペットボトル判定シーケンスに移行
-        if key == ord('n') and self.table_detection:
+        if key == ord('n') and self.table_detection and self.detection_success:
             # todo ゆかりさんボイス
             # self.yukari.play_move_to_check_standing_sequence()
             self.table_detection = False
@@ -330,7 +306,7 @@ class App(Parameter, Utils, FieldView):
         if key == ord('r') and not self.table_detection:
             global sc
             logging.info(f'STORED:{sc}')
-            self.save_table_images(self.color_image_for_save, self.table_set, 20)
+            self.save_table_images(image=self.color_image_for_save, table_set=self.table_set, x_offset=20, y_offset=20)
             sc += 1
 
         # 終了
