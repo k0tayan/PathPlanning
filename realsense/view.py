@@ -3,10 +3,47 @@ from .config import Config, Color, Path
 from .objects import Table
 import numpy as np
 
+window_name = 'PathPlanning'
+path_window_name = 'Path'
+bar_window_name = 'setting'
+field_window_name = 'Field'
 
 class Draw(Config, Path):
     def __init__(self):
-        pass
+        self.window_name = window_name
+        self.path_window_name = path_window_name
+        self.bar_window_name = bar_window_name
+        self.field_window_name = field_window_name
+
+
+        cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
+        cv2.moveWindow(window_name, 450, 0, )
+        cv2.namedWindow(bar_window_name, cv2.WINDOW_AUTOSIZE)
+        cv2.namedWindow(field_window_name, cv2.WND_PROP_FULLSCREEN)
+        # cv2.setWindowProperty(field_window_name, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+        kizunaai = cv2.imread('./kizunaai/kizunaai.jpg')
+        cv2.imshow(field_window_name, kizunaai)
+
+    def set_track_bar_pos(self, settings: dict):
+        cv2.createTrackbar('H', self.bar_window_name, 0, 255, int)
+        cv2.createTrackbar('S', self.bar_window_name, 0, 255, int)
+        cv2.createTrackbar('V', self.bar_window_name, 0, 255, int)
+        cv2.createTrackbar('LV', self.bar_window_name, 0, 255, int)
+        cv2.createTrackbar('threshold', self.bar_window_name, 0, 255, int)
+        cv2.createTrackbar('kernel', self.bar_window_name, 0, 100, int)
+        cv2.createTrackbar('remove_side', self.bar_window_name, 0, 30, int)
+        cv2.createTrackbar('remove_side_e', self.bar_window_name, 0, self.height, int)
+        cv2.createTrackbar('zone', self.bar_window_name, 0, 1, int)
+
+        cv2.setTrackbarPos('H', self.bar_window_name, settings['h'])
+        cv2.setTrackbarPos('S', self.bar_window_name, settings['s'])
+        cv2.setTrackbarPos('V', self.bar_window_name, settings['v'])
+        cv2.setTrackbarPos('LV', self.bar_window_name, settings['lv'])
+        cv2.setTrackbarPos('threshold', self.bar_window_name, settings['th'])
+        cv2.setTrackbarPos('kernel', self.bar_window_name, settings['k'])
+        cv2.setTrackbarPos('remove_side', self.bar_window_name, settings['rms'])
+        cv2.setTrackbarPos('remove_side_e', self.bar_window_name, int(self.height / 3))
+        cv2.setTrackbarPos('zone', self.bar_window_name, self.zone)
 
     def put_text(self, img, text, pos, color, size=1, weight=1):
         return cv2.putText(img, text, tuple(pos), cv2.FONT_HERSHEY_TRIPLEX, size, color, weight, cv2.LINE_AA)
@@ -75,6 +112,8 @@ class Draw(Config, Path):
             cv2.line(sim, (953, 25), (1100, 180), Color.blue, 6)
             cv2.line(sim, (953, 180), (1100, 25), Color.blue, 6)
         return sim
+
+
 
 
 class FieldView(Config):
