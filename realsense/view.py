@@ -5,7 +5,7 @@ import numpy as np
 
 window_name = 'PathPlanning'
 path_window_name = 'Path'
-bar_window_name = 'setting'
+bar_window_name = window_name + '-setting'
 field_window_name = 'Field'
 
 class Draw(Config, Path):
@@ -15,9 +15,6 @@ class Draw(Config, Path):
         self.bar_window_name = bar_window_name
         self.field_window_name = field_window_name
 
-
-        cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
-        cv2.moveWindow(window_name, 450, 0, )
         cv2.namedWindow(bar_window_name, cv2.WINDOW_AUTOSIZE)
         cv2.namedWindow(field_window_name, cv2.WND_PROP_FULLSCREEN)
         # cv2.setWindowProperty(field_window_name, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
