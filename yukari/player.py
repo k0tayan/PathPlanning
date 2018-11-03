@@ -3,6 +3,7 @@ from pydub import AudioSegment
 import glob
 import threading
 import simpleaudio
+import time
 
 dir = './yukari/files/'
 if __name__ == '__main__':
@@ -26,6 +27,7 @@ class Yukari:
 
         self.playable_cant_reach_to_host = True
         self.playable_finish_path_planning = True
+        self.playable_results = True
 
     def play(self, seg):
         if self.playback is not None and self.playback.is_playing():
@@ -67,11 +69,15 @@ class Yukari:
         for result in results:
             self.play_result(result[0], result[1])
             while self.playback.is_playing():
-                pass
+                time.sleep(0.001)
+        self.playable_results = True
 
     def play_results(self, results):
         # results:
         # [[0, True], [1, False]]
+        if self.playback is not None and self.playback.is_playing() and not self.playable_results:
+            return
+        self.playable_results = False
         thread = threading.Thread(target=self._play_results, args=([results]), daemon=True)
         thread.start()
 
