@@ -15,7 +15,8 @@ class Config:
     seconds = 10
     send = False
     use_standing_detection = True
-    use_realsense = 1
+
+    use_realsense =0 
 
 
 class Path:
