@@ -11,7 +11,7 @@ from yukari.player import Yukari
 
 window_name = 'PathPlanning'
 path_window_name = 'Path'
-bar_window_name = 'setting'
+bar_window_name = window_name + '-setting'
 field_window_name = 'Field'
 timer = 0  # 初期化
 sc = 1
@@ -31,7 +31,7 @@ class App(Parameter, Utils, FieldView, Draw, ):
             config.enable_stream(rs.stream.color, self.width, self.height, rs.format.bgr8, 30)
             self.pipeline.start(config)
         else:
-            self.capture = cv2.VideoCapture(1)
+            self.capture = cv2.VideoCapture(0)
             self.capture.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)  # カメラ画像の横幅を1280に設定
             self.capture.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)  # カメラ画像の縦幅を720に設定
         self.table_set = Tables()
@@ -77,7 +77,7 @@ class App(Parameter, Utils, FieldView, Draw, ):
     def get_data_from_webcam(self) -> (np.asanyarray, None):
         # ウェブカメラから画像データを取得
         ret, frame = self.capture.read()
-        frame = cv2.flip(frame, -1)
+        # frame = cv2.flip(frame, -1)
         return frame, None
 
     def get_data(self):
@@ -163,7 +163,7 @@ class App(Parameter, Utils, FieldView, Draw, ):
         images_for_thresh = cv2.resize(images_for_thresh, (int(1280 * 0.65), int(480 * 0.65)))
 
         # 表示
-        cv2.imshow(window_name, color_image_for_show)
+        # cv2.imshow(window_name, color_image_for_show)
         cv2.imshow(bar_window_name, images_for_thresh)
 
     def analyze(self):
@@ -252,10 +252,9 @@ class App(Parameter, Utils, FieldView, Draw, ):
                 self.put_standing_detection_result(color_image_for_show, self.table_set, self.bottle_result)
                 if not self.processing_standing_detection:
                     self.check_standing(for_check, self.table_set)
-                    self.table_set.reset_standing_result()
+                    # self.table_set.reset_standing_result()
 
-                if self.table_set.up.standing is not None:
-                    self.processing_standing_detection = False
+                if not np.all(self.table_set.result is None):
                     play_result = []
                     if self.bottle_result[0] != self.table_set.result[0]:
                         play_result.append([0, self.table_set.result[0]])
@@ -263,7 +262,8 @@ class App(Parameter, Utils, FieldView, Draw, ):
                         play_result.append([1, self.table_set.result[1]])
                     if self.bottle_result[2] != self.table_set.result[2]:
                         play_result.append([2, self.table_set.result[2]])
-                    self.yukari.play_results(play_result)
+                    if play_result:
+                        self.yukari.play_results(play_result)
                     self.bottle_result = self.table_set.result
                     # 立っていたらTrue、立っていなかったらFalse
                     self.planner.set_result_by_list(self.bottle_result)
