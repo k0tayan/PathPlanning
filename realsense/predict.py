@@ -10,7 +10,7 @@ import sys
 import os
 
 path = os.path.dirname(os.path.abspath(__file__))
-filename = path + '/model.pb'
+filename = path + '/model2.pb' # model1.pb 水増しなし model2.pb 水増しあり
 labels_filename = path + '/labels.txt'
 
 network_input_size = 227
@@ -52,7 +52,7 @@ def extract_bilinear_pixel(img, x, y, ratio, xOrigin, yOrigin):
         xDelta = 0.0;
     else:
         x1 = x0 + 1;
-    
+
     yDelta = (y + 0.5) * ratio - 0.5
     y0 = int(yDelta)
     yDelta -= y0
@@ -152,9 +152,9 @@ def update_orientation(image):
             if orientation == 1 or orientation == 2 or orientation == 5 or orientation == 6:
                 image = image.transpose(Image.FLIP_LEFT_RIGHT)
     return image
-                
+
 def predict_image(image):
-        
+
     log_msg('Predicting image')
     try:
         """if image.mode != "RGB":
@@ -163,7 +163,7 @@ def predict_image(image):
 
         w,h = image.size
         log_msg("Image size: " + str(w) + "x" + str(h))"""
-        
+
         # Update orientation based on EXIF tags
         # image = update_orientation(image)
 
@@ -173,7 +173,7 @@ def predict_image(image):
 
         # Convert image to numpy array
         image = convert_to_nparray(image)
-        
+
         # Crop the center square and resize that square down to 256x256
         resized_image = extract_and_resize_to_256_square(image)
 
@@ -186,7 +186,7 @@ def predict_image(image):
         with tf.Session() as sess:
             prob_tensor = sess.graph.get_tensor_by_name(output_layer)
             predictions, = sess.run(prob_tensor, {input_node: [cropped_image] })
-            
+
             result = []
             for p, label in zip(predictions, labels):
                 truncated_probablity = np.float64(round(p,8))
@@ -197,17 +197,17 @@ def predict_image(image):
                         'tagId': '',
                         'boundingBox': None })
 
-            response = { 
+            response = {
                 'id': '',
                 'project': '',
                 'iteration': '',
                 'created': datetime.utcnow().isoformat(),
-                'predictions': result 
+                'predictions': result
             }
 
             log_msg("Results: " + str(response))
             return response
-            
+
     except Exception as e:
         log_msg(str(e))
         return 'Error: Could not preprocess image for prediction. ' + str(e)
