@@ -9,10 +9,6 @@ import pyrealsense2 as rs
 from path_planning import PathPlanning
 from yukari.player import Yukari
 
-window_name = 'PathPlanning'
-path_window_name = 'Path'
-bar_window_name = window_name + '-setting'
-field_window_name = 'Field'
 timer = 0  # 初期化
 sc = 1
 coloredlogs.install()
@@ -53,15 +49,15 @@ class App(Parameter, Utils, FieldView, Draw, ):
 
     def get_param(self):
         # スライダーの値を取得
-        self.h = cv2.getTrackbarPos('H', bar_window_name)
-        self.s = cv2.getTrackbarPos('S', bar_window_name)
-        self.v = cv2.getTrackbarPos('V', bar_window_name)
-        self.lv = cv2.getTrackbarPos('LV', bar_window_name)
-        self.th = cv2.getTrackbarPos('threshold', bar_window_name)
-        self.kn = cv2.getTrackbarPos('kernel', bar_window_name)
-        self.remove_side = cv2.getTrackbarPos('remove_side', bar_window_name)
-        self.remove_side_e = cv2.getTrackbarPos('remove_side_e', bar_window_name)
-        self.zone = cv2.getTrackbarPos('zone', bar_window_name)
+        self.h = cv2.getTrackbarPos('H', self.bar_window_name)
+        self.s = cv2.getTrackbarPos('S', self.bar_window_name)
+        self.v = cv2.getTrackbarPos('V', self.bar_window_name)
+        self.lv = cv2.getTrackbarPos('LV', self.bar_window_name)
+        self.th = cv2.getTrackbarPos('threshold', self.bar_window_name)
+        self.kn = cv2.getTrackbarPos('kernel', self.bar_window_name)
+        self.remove_side = cv2.getTrackbarPos('remove_side', self.bar_window_name)
+        self.remove_side_e = cv2.getTrackbarPos('remove_side_e', self.bar_window_name)
+        self.zone = cv2.getTrackbarPos('zone', self.bar_window_name)
 
     def get_data_from_realsense(self) -> (np.asanyarray, np.asanyarray):
         # realsenseから深度と画像データを取得
@@ -164,7 +160,7 @@ class App(Parameter, Utils, FieldView, Draw, ):
 
         # 表示
         # cv2.imshow(window_name, color_image_for_show)
-        cv2.imshow(bar_window_name, images_for_thresh)
+        cv2.imshow(self.bar_window_name, images_for_thresh)
 
     def analyze(self):
         # スライダーの値を取得
@@ -279,7 +275,7 @@ class App(Parameter, Utils, FieldView, Draw, ):
                 self.planner.send(self.points, self.flip_points)
                 # フィールド描画
                 field_view = self.draw_field((ret.under, ret.middle, ret.up), self.points)
-                cv2.imshow(field_window_name, field_view)
+                cv2.imshow(self.field_window_name, field_view)
                 self.yukari.play_finish_path_planning()
                 timer = time.time()
 
