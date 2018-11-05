@@ -202,7 +202,11 @@ class FlipPoint:
                 else:
                     if abs(self.table_middle.x - self.table_up.x) > 2 * (self.move_table_width / 2) + self.robot.width:
                         print(14)
-                        self.set_goal(LEFT, LEFT, RIGHT)
+                        if zone == RED:
+                            self.set_goal(LEFT, LEFT, RIGHT)
+                        else:
+                            self.set_goal(LEFT, LEFT, RIGHT)
+                            # self.set_goal_by_zone(zone)
                     else:
                         print(15)
                         if abs(self.table_middle.x - self.table_up.x) > self.robot.width / 2 + turn_margin:
