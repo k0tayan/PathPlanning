@@ -10,7 +10,7 @@ import json
 import os
 import time
 from .predict import initialize, predict_image
-from .types import Types
+from .consts import (STAND, FALLEN_DOWN, FALLEN, FIELD_WIDTH, TABLE_WIDTH)
 from .detection import Tables
 
 
@@ -19,7 +19,7 @@ def randstr(n):
     return random_str
 
 
-class Utils(Config, Field, Path, Types):
+class Utils(Config, Path):
     def __init__(self):
         self.log = True
         self.processing_standing_detection = False
@@ -84,13 +84,13 @@ class Utils(Config, Field, Path, Types):
                 pre = 0
                 for re in result['predictions']:
                     tag = re['tagName']
-                    if tag == self.stand:
+                    if tag == STAND:
                         pre = re['probability']
                         print('stand:', pre)
-                    elif tag == self.fallendown:
+                    elif tag == FALLEN_DOWN:
                         pre = re['probability']
                         print('fallen_down:', pre)
-                    elif tag == self.fallen:
+                    elif tag == FALLEN:
                         pre = re['probability']
                         print('fallen:', pre)
                     if max_pre < pre:
@@ -102,10 +102,10 @@ class Utils(Config, Field, Path, Types):
             ret = np.append(ret, max_label)
         print(ret)
         logging.info(f'END STANDING DETECTION:{round(time.time() - self.start_standing_detection_time, 3)}[sec]')
-        if np.all(ret == self.fallen):
+        if np.all(ret == FALLEN):
             table_set.reset_standing_result()
         else:
-            table_set.under.standing, table_set.middle.standing, table_set.up.standing = (ret == self.stand)
+            table_set.under.standing, table_set.middle.standing, table_set.up.standing = (ret == STAND)
         self.processing_standing_detection = False
 
     def check_standing(self, color_image_for_save, table_set):
@@ -124,9 +124,9 @@ class Utils(Config, Field, Path, Types):
 
     def make_distance_to_send(self, tables):
         t = T()
-        t.under = self.FIELD_WIDTH - (int(tables.under.dist * 1000) + self.TABLE_WIDTH / 2)
-        t.middle = self.FIELD_WIDTH - (int(tables.middle.dist * 1000) + self.TABLE_WIDTH / 2)
-        t.up = self.FIELD_WIDTH - (int(tables.up.dist * 1000) + self.TABLE_WIDTH / 2)
+        t.under = FIELD_WIDTH - (int(tables.under.dist * 1000) + TABLE_WIDTH / 2)
+        t.middle = FIELD_WIDTH - (int(tables.middle.dist * 1000) + TABLE_WIDTH / 2)
+        t.up = FIELD_WIDTH - (int(tables.up.dist * 1000) + TABLE_WIDTH / 2)
         t.fix()
         return t
 

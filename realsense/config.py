@@ -15,8 +15,7 @@ class Config:
     seconds = 10
     send = False
     use_standing_detection = True
-
-    use_realsense =0 
+    use_realsense = 0
 
 
 class Path:
@@ -36,11 +35,6 @@ class Path:
     setting_path = dir + '/realsense/settings.json'
 
 
-class Field:
-    FIELD_WIDTH = 5000
-    TABLE_WIDTH = 500
-
-
 class Color:
     blue = (255, 167, 38)
     red = (38, 81, 255)
@@ -49,4 +43,4 @@ class Color:
     error = (255, 75, 0)
     black = (0, 0, 0)
     green = (156, 100, 71)
-    light_green = ((0, 252, 124))
+    light_green = (0, 252, 124)
