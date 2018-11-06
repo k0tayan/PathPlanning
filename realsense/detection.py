@@ -1,7 +1,7 @@
 import numpy as np
 from .config import *
 from .objects import *
-from .types import Types
+from .consts import (UNDER, MIDDLE, UP)
 
 
 class ApproximationFunction(Path):
@@ -28,7 +28,7 @@ class ApproximationFunction(Path):
         return np.poly1d(self.up_front_res)(x)
 
 
-class Tables(Config, ApproximationFunction, Types):
+class Tables(Config, ApproximationFunction):
     def __init__(self):
         super().__init__()
 
@@ -40,15 +40,15 @@ class Tables(Config, ApproximationFunction, Types):
 
     def update_for_front(self, under: Table, middle: Table, up: Table):
         self.under = under
-        self.under.type = self.UNDER
+        self.under.type = UNDER
         self.under.dist = self.__round(self.make_distance_under_front_by_center(under.x))
 
         self.middle = middle
-        self.middle.type = self.MIDDLE
+        self.middle.type = MIDDLE
         self.middle.dist = self.__round(self.make_distance_middle_front_by_center(middle.x))
 
         self.up = up
-        self.up.type = self.UP
+        self.up.type = UP
         self.up.dist = self.__round(self.make_distance_up_front_by_center(up.x))
 
     def reset_standing_result(self):

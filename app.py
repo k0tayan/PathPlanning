@@ -3,6 +3,7 @@ import coloredlogs, logging
 import numpy as np
 import cv2
 import time
+import platform
 
 from realsense import *
 import pyrealsense2 as rs
@@ -27,7 +28,10 @@ class App(Parameter, Utils, FieldView, Draw, ):
             config.enable_stream(rs.stream.color, self.width, self.height, rs.format.bgr8, 30)
             self.pipeline.start(config)
         else:
-            self.capture = cv2.VideoCapture(0)
+            if platform.system() == 'Darwin':
+                self.capture = cv2.VideoCapture(1)
+            else:
+                self.capture = cv2.VideoCapture(0)
             self.capture.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)  # カメラ画像の横幅を1280に設定
             self.capture.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)  # カメラ画像の縦幅を720に設定
         self.table_set = Tables()
