@@ -1,25 +1,21 @@
 import cv2
 from .config import Config, Color, Path
 from .objects import Table
+from .consts import (WINDOW_NAME, PATH_WINDOW_NAME, BAR_WINDOW_NAME, FIELD_WINDOW_NAME)
 import numpy as np
-
-window_name = 'PathPlanning'
-path_window_name = 'Path'
-bar_window_name = window_name + '-setting'
-field_window_name = 'Field'
 
 class Draw(Config, Path):
     def __init__(self):
-        self.window_name = window_name
-        self.path_window_name = path_window_name
-        self.bar_window_name = bar_window_name
-        self.field_window_name = field_window_name
+        self.window_name =WINDOW_NAME
+        self.path_window_name = PATH_WINDOW_NAME
+        self.bar_window_name = BAR_WINDOW_NAME
+        self.field_window_name = FIELD_WINDOW_NAME
 
-        cv2.namedWindow(bar_window_name, cv2.WINDOW_AUTOSIZE)
-        cv2.namedWindow(field_window_name, cv2.WND_PROP_FULLSCREEN)
+        cv2.namedWindow(self.bar_window_name, cv2.WINDOW_AUTOSIZE)
+        cv2.namedWindow(self.field_window_name, cv2.WND_PROP_FULLSCREEN)
         # cv2.setWindowProperty(field_window_name, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
         kizunaai = cv2.imread('./kizunaai/kizunaai.jpg')
-        cv2.imshow(field_window_name, kizunaai)
+        cv2.imshow(self.field_window_name, kizunaai)
 
     def set_track_bar_pos(self, settings: dict):
         cv2.createTrackbar('H', self.bar_window_name, 0, 255, int)
