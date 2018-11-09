@@ -6,3 +6,7 @@ FALLEN_DOWN = 'fallendown'
 FALLEN = 'fallen'
 FIELD_WIDTH = 5000
 TABLE_WIDTH = 500
+WINDOW_NAME = 'PathPlanning'
+PATH_WINDOW_NAME = 'Path'
+BAR_WINDOW_NAME = WINDOW_NAME + '-setting'
+FIELD_WINDOW_NAME = 'Field'
