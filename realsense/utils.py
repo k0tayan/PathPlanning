@@ -42,63 +42,43 @@ class Utils(Config, Path):
         ys = table.y - table.radius - y_offset
         if ys < 0:
             ys = 0
-        yg = table.y + table.radius + y_offset
+        yg = table.y + table.radius
+        yg = int(yg*0.95)
         if yg > self.height:
             yg = self.height
         xs = table.x - table.radius - x_offset
         if xs < 0:
             xs = 0
-        xg = table.x + table.radius + y_offset
+        xg = table.x + table.radius + x_offset
         if xg > self.width:
             xg = self.width
         return image[ys:yg, xs:xg]
 
-    # def check_by_keras(self, table_set, image_list):
-    #    # keras
-    #    def resize(im):
-    #        im = cv2.resize(im, (50, 50))
-    #        return im
-
-    #   image_list = list(map(resize, image_list))
-
-    #    table_set.under.standing = self.model.predict_classes(np.array([image_list[0] / 255.]), 100)[0]
-    #    table_set.middle.standing = self.model.predict_classes(np.array([image_list[1] / 255.]), 100)[0]
-    #    table_set.up.standing = self.model.predict_classes(np.array([image_list[2] / 255.]), 100)[0]
-
     def check_by_custom_vision(self, table_set: Tables, image_list):
-        # self.save_table_images_for_check(image, table_set, 20)
-        # image_list = [cv2.imread('./table_images/tmp/under.jpg'),
-        #               cv2.imread('./table_images/tmp/middle.jpg'),
-        #               cv2.imread('./table_images/tmp/up.jpg')]
         results = list(map(predict_image, image_list))
-
-        # results = []
-        # results.append(predict_image(image_list[0]))
-        # results.append(predict_image(image_list[1]))
-        # results.append(predict_image(image_list[2]))
-
         ret = np.array([])
         for result in results:
             max_pre = 0
+            print(result)
             if len(result['predictions']) > 1:
                 pre = 0
                 for re in result['predictions']:
                     tag = re['tagName']
                     if tag == STAND:
                         pre = re['probability']
-                        print('stand:', pre)
+                        # print('stand:', pre)
                     elif tag == FALLEN_DOWN:
                         pre = re['probability']
-                        print('fallen_down:', pre)
+                        # print('fallen_down:', pre)
                     elif tag == FALLEN:
                         pre = re['probability']
-                        print('fallen:', pre)
+                        # print('fallen:', pre)
                     if max_pre < pre:
                         max_pre = pre
                         max_label = tag
             else:
                 max_label = result['predictions'][0]['tagName']
-                print(result['predictions'])
+                # print(result['predictions'])
             ret = np.append(ret, max_label)
         print(ret)
         logging.info(f'END STANDING DETECTION:{round(time.time() - self.start_standing_detection_time, 3)}[sec]')
@@ -113,14 +93,13 @@ class Utils(Config, Path):
         self.processing_standing_detection = True
         self.start_standing_detection_time = time.time()
         logging.info('START STANDING DETECTION')
-        under = self.get_table_bounding_box(color_image_for_save, table_set.under)
+        under = self.get_table_bounding_box(color_image_for_save, table_set.under, x_offset=30, y_offset=40)
         middle = self.get_table_bounding_box(color_image_for_save, table_set.middle)
         up = self.get_table_bounding_box(color_image_for_save, table_set.up)
-        if self.custom_vision:
-            image_list = [under, middle, up]
-            thread = threading.Thread(target=self.check_by_custom_vision, args=(table_set, image_list),
-                                      daemon=True, )
-            thread.start()
+        image_list = [under, middle, up]
+        thread = threading.Thread(target=self.check_by_custom_vision, args=(table_set, image_list),
+                                  daemon=True, )
+        thread.start()
 
     def make_distance_to_send(self, tables):
         t = T()
@@ -142,7 +121,7 @@ class Utils(Config, Path):
         json.dump(self.settings, f)
 
     def save_table_images(self, image, table_set, x_offset=20, y_offset=15):
-        cv2.imwrite(f'./table_images/new/under_{randstr(10)}.jpg', self.get_table_bounding_box(image, table_set.under))
+        cv2.imwrite(f'./table_images/new/under_{randstr(10)}.jpg', self.get_table_bounding_box(image, table_set.under, x_offset=30, y_offset=40))
         cv2.imwrite(f'./table_images/new/middle_{randstr(10)}.jpg',
                     self.get_table_bounding_box(image, table_set.middle))
         cv2.imwrite(f'./table_images/new/up_{randstr(10)}.jpg', self.get_table_bounding_box(image, table_set.up))
