@@ -10,12 +10,14 @@ import pyrealsense2 as rs
 from path_planning import PathPlanning
 from yukari.player import Yukari
 
+from realsense.consts import NPOINTS
+
 timer = 0  # 初期化
 sc = 1
 coloredlogs.install()
 
 
-class App(Parameter, Utils, FieldView, Draw, ):
+class App(Parameter, Utils, FieldView, Draw, Event, ):
     def __init__(self):
         super(Parameter, self).__init__()
         super(Utils, self).__init__()
@@ -38,9 +40,7 @@ class App(Parameter, Utils, FieldView, Draw, ):
         self.planner = PathPlanning(send=self.send)
         self.table_detection = True
         self.detection_success = False
-        self.view_mode = 0  # 0=thresh 1=path 2=standing_detection
         self.bottle_result = [None, None, None]
-        self.auto_change = True
         self.standing_result_image = None
         self.quit = False
         self.yukari = Yukari()
@@ -49,6 +49,9 @@ class App(Parameter, Utils, FieldView, Draw, ):
         self.flip_points = None
 
         self.set_track_bar_pos(self.settings)
+
+        self.click_mode = False
+        self.ptlist = PointList(NPOINTS)
         logging.info('START DETECTION')
 
     def get_param(self):
@@ -208,19 +211,34 @@ class App(Parameter, Utils, FieldView, Draw, ):
 
             self.points, self.flip_points = None, None
 
-            # 輪郭抽出
-            imgEdge, contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-
-            # 見つかった輪郭をリストに入れる
             tables = []  # テーブルの可能性がある輪郭をここに入れる
-            contours.sort(key=cv2.contourArea, reverse=True)
-            for cnt in contours:
-                (x, y), radius = cv2.minEnclosingCircle(cnt)
-                center = (int(x), int(y))
-                radius = int(radius)
-                table = Table(center, radius, 0, (x, y))
-                if table.is_table():  # 本当にテーブルかチェック
-                    tables.append(table)  # テーブルだったらリストに追加
+            if self.click_mode:
+                cv2.setMouseCallback(self.window_name, self.onMouse, [self.window_name, self.color_image_for_save, self.ptlist])
+                self.draw_click(color_image_for_show, self.ptlist.get_points())
+                if self.ptlist.is_full():
+                    for i, point in enumerate(self.ptlist.get_points()):
+                        if i == 0:
+                            radius = 56
+                        elif i == 1:
+                            radius = 70
+                        elif i == 2:
+                            radius = 100
+                        table = Table(point, radius, 0, point)
+                        tables.append(table)
+
+            else:
+                # 輪郭抽出
+                imgEdge, contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+                # 見つかった輪郭をリストに入れる
+                contours.sort(key=cv2.contourArea, reverse=True)
+                for cnt in contours:
+                    (x, y), radius = cv2.minEnclosingCircle(cnt)
+                    center = (int(x), int(y))
+                    radius = int(radius)
+                    table = Table(center, radius, 0, (x, y))
+                    if table.is_table():  # 本当にテーブルかチェック
+                        tables.append(table)  # テーブルだったらリストに追加
 
             # 半径が大きい順にソート
             tables = sorted(tables, reverse=True)
@@ -311,12 +329,14 @@ class App(Parameter, Utils, FieldView, Draw, ):
             logging.info('SAVED PARAMETER')
             self.save_param(self.h, self.s, self.v, self.lv, self.th, self.kn, self.remove_side)
 
-        # 自動画面切り替えフラグを切り替え
-        if key == ord('o'):
-            self.auto_change = not self.auto_change
-
         if key == ord('e'):
             self.remove_separator_middle = not self.remove_separator_middle
+
+        if key == ord('c'):
+            self.click_mode = not self.click_mode
+
+        if key == ord('z'):
+            self.ptlist.reset_points()
 
     def run(self):
         try:

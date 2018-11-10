@@ -4,9 +4,10 @@ from .objects import Table
 from .consts import (WINDOW_NAME, PATH_WINDOW_NAME, BAR_WINDOW_NAME, FIELD_WINDOW_NAME)
 import numpy as np
 
+
 class Draw(Config, Path):
     def __init__(self):
-        self.window_name =WINDOW_NAME
+        self.window_name = WINDOW_NAME
         self.path_window_name = PATH_WINDOW_NAME
         self.bar_window_name = BAR_WINDOW_NAME
         self.field_window_name = FIELD_WINDOW_NAME
@@ -106,8 +107,13 @@ class Draw(Config, Path):
             cv2.line(sim, (953, 180), (1100, 25), Color.blue, 6)
         return sim
 
-
-
+    def draw_click(self, image, points):
+        self.put_text(image, "Click Mode", (50, 60), Color.black, 2, 4)
+        for point in points:
+            if self.zone:
+                cv2.circle(image, point, 3, Color.red, 3)
+            else:
+                cv2.circle(image, point, 3, Color.blue, 3)
 
 class FieldView(Config):
     def __init__(self):
