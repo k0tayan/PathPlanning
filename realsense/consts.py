@@ -10,3 +10,4 @@ WINDOW_NAME = 'PathPlanning'
 PATH_WINDOW_NAME = 'Path'
 BAR_WINDOW_NAME = WINDOW_NAME + '-setting'
 FIELD_WINDOW_NAME = 'Field'
+NPOINTS = 3
