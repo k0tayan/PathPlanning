@@ -145,25 +145,17 @@ class App(Parameter, Utils, FieldView, Draw, ):
         # threshウインドウのみthreshを表示
         images_for_thresh = np.hstack((color_image_for_show, thresh))
 
-        if self.table_detection:
-            color_image_for_show = np.hstack((color_image_for_show, thresh))
-        else:
+        if not self.table_detection:
             # 立っているかの判定情報を描画
             self.put_info_by_set(color_image_for_show, self.table_set, Color.black)
             self.standing_result_image = self.put_standing_detection_result(color_image_for_show, self.table_set,
                                                                             self.bottle_result)
 
-            if self.standing_result_image is not None:
-                color_image_for_show = np.hstack((color_image_for_show, self.standing_result_image))
-            else:
-                color_image_for_show = np.hstack((color_image_for_show, thresh))
-
         # ウインドウサイズがでかくなりすぎるので、縮小
-        color_image_for_show = cv2.resize(color_image_for_show, (int(1280 * 0.65), int(480 * 0.65)))
         images_for_thresh = cv2.resize(images_for_thresh, (int(1280 * 0.65), int(480 * 0.65)))
 
         # 表示
-        # cv2.imshow(window_name, color_image_for_show)
+        cv2.imshow(self.window_name, color_image_for_show)
         cv2.imshow(self.bar_window_name, images_for_thresh)
 
     def analyze(self):
