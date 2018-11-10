@@ -40,15 +40,15 @@ class Tables(Config, ApproximationFunction):
 
     def update_for_front(self, under: Table, middle: Table, up: Table):
         self.under = under
-        self.under.type = UNDER
+        self.under.type = 'TABLE_1'
         self.under.dist = self.__round(self.make_distance_under_front_by_center(under.x))
 
         self.middle = middle
-        self.middle.type = MIDDLE
+        self.middle.type = 'TABLE_2'
         self.middle.dist = self.__round(self.make_distance_middle_front_by_center(middle.x))
 
         self.up = up
-        self.up.type = UP
+        self.up.type = 'TABLE_3'
         self.up.dist = self.__round(self.make_distance_up_front_by_center(up.x))
 
     def reset_standing_result(self):
