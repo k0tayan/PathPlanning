@@ -6,7 +6,6 @@ import time
 import platform
 
 from realsense import *
-import pyrealsense2 as rs
 from path_planning import PathPlanning
 from yukari.player import Yukari
 
@@ -23,19 +22,12 @@ class App(Parameter, Utils, FieldView, Draw, Event, ):
         super(Utils, self).__init__()
         super(FieldView, self).__init__()
         super(Draw, self).__init__()
-        if self.use_realsense:
-            self.pipeline = rs.pipeline()
-            config = rs.config()
-            config.enable_stream(rs.stream.depth, self.width, self.height, rs.format.z16, 30)
-            config.enable_stream(rs.stream.color, self.width, self.height, rs.format.bgr8, 30)
-            self.pipeline.start(config)
+        if platform.system() == 'Darwin':
+            self.capture = cv2.VideoCapture(0)
         else:
-            if platform.system() == 'Darwin':
-                self.capture = cv2.VideoCapture(1)
-            else:
-                self.capture = cv2.VideoCapture(0)
-            self.capture.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)  # カメラ画像の横幅を1280に設定
-            self.capture.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)  # カメラ画像の縦幅を720に設定
+            self.capture = cv2.VideoCapture(0)
+        self.capture.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)  # カメラ画像の横幅を1280に設定
+        self.capture.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)  # カメラ画像の縦幅を720に設定
         self.table_set = Tables()
         self.planner = PathPlanning(send=self.send)
         self.table_detection = True
@@ -66,17 +58,6 @@ class App(Parameter, Utils, FieldView, Draw, Event, ):
         self.remove_side_e = cv2.getTrackbarPos('remove_side_e', self.bar_window_name)
         self.zone = cv2.getTrackbarPos('zone', self.bar_window_name)
 
-    def get_data_from_realsense(self) -> (np.asanyarray, np.asanyarray):
-        # realsenseから深度と画像データを取得
-        frames = self.pipeline.wait_for_frames()
-        depth = frames.get_depth_frame()
-        color_frame = frames.get_color_frame()
-        color_image = np.asanyarray(color_frame.get_data())
-
-        depth_data = depth.as_frame().get_data()
-        np_depth = np.asanyarray(depth_data)
-        return color_image, np_depth
-
     def get_data_from_webcam(self) -> (np.asanyarray, None):
         # ウェブカメラから画像データを取得
         ret, frame = self.capture.read()
@@ -84,10 +65,7 @@ class App(Parameter, Utils, FieldView, Draw, Event, ):
         return frame, None
 
     def get_data(self):
-        if self.use_realsense:
-            return self.get_data_from_realsense()
-        else:
-            return self.get_data_from_webcam()
+        return self.get_data_from_webcam()
 
     def remove_separator(self, color_image):
         # セパレータ消すやつ
@@ -352,21 +330,9 @@ class App(Parameter, Utils, FieldView, Draw, Event, ):
                         break
 
                 except Exception as error:
-                    if str(error) == "wait_for_frames cannot be called before start()":
-                        if self.use_realsense:
-                            self.pipeline.stop()
-                            exit()
-                    elif str(error) == "Frame didn't arrived within 5000":
-                        if self.use_realsense:
-                            self.pipeline.stop()
-                            exit()
-                    else:
-                        logging.error(error)
+                    logging.error(error)
         except:
             pass
-        finally:
-            if self.use_realsense:
-                self.pipeline.stop()
 
 
 if __name__ == '__main__':
