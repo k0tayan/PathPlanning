@@ -193,13 +193,7 @@ class App(Parameter, Utils, FieldView, Draw, Event, ):
                 self.draw_click(color_image_for_show, self.ptlist.get_points())
                 if self.ptlist.is_full():
                     for i, point in enumerate(self.ptlist.get_points()):
-                        if i == 0:
-                            radius = 56
-                        elif i == 1:
-                            radius = 70
-                        elif i == 2:
-                            radius = 100
-                        table = Table(point, radius, 0, point)
+                        table = Table(point, (lambda x: 60 if x==0 else (70 if x==1 else 100))(i), 0, point)
                         tables.append(table)
 
             else:
