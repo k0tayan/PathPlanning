@@ -11,6 +11,7 @@ from yukari.player import Yukari
 
 from realsense.consts import NPOINTS
 
+camera = 0 # なんか知らんが毎回変わる
 timer = 0  # 初期化
 sc = 1
 coloredlogs.install()
@@ -22,12 +23,9 @@ class App(Parameter, Utils, FieldView, Draw, Event, ):
         super(Utils, self).__init__()
         super(FieldView, self).__init__()
         super(Draw, self).__init__()
-        if platform.system() == 'Darwin':
-            self.capture = cv2.VideoCapture(0)
-        else:
-            self.capture = cv2.VideoCapture(0)
-        self.capture.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)  # カメラ画像の横幅を1280に設定
-        self.capture.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)  # カメラ画像の縦幅を720に設定
+        self.capture = cv2.VideoCapture(camera)
+        self.capture.set(cv2.CAP_PROP_FRAME_WIDTH, self.width)  # カメラ画像の横幅を1280に設定
+        self.capture.set(cv2.CAP_PROP_FRAME_HEIGHT, self.height)  # カメラ画像の縦幅を720に設定
         self.table_set = Tables()
         self.planner = PathPlanning(send=self.send)
         self.table_detection = True
