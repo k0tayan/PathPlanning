@@ -1,7 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import random
-from bottleflip import *
+from path import *
+from path.objects import (LEFT, RIGHT)
 import sys
 import coloredlogs, logging
 import threading
@@ -13,7 +14,7 @@ class PathPlanning:
     def __init__(self, send=True):
         self.use_send = send
         # 立っていたらTrue、立っていなかったらFalse
-        self.result = [False, False, False]
+        self.result = [None, None, None]
         self.log = True
         self.tcp = None
 
@@ -36,14 +37,9 @@ class PathPlanning:
                 logging.error(str(error))
 
     def fix(self, coord):
-        if coord < 1250:
-             return 1250
-        elif coord > 3750:
-            return 3750
-        else:
-            return coord
+        return (lambda x: 1250 if x < 1250 else (3750 if x > 3750 else x))(coord)
 
-    def main(self, arg):
+    def create_instance(self, arg):
         # create instance
         robot = Robot(config.robot_width)
         field = Field(config.field_width, config.field_height)
@@ -58,11 +54,11 @@ class PathPlanning:
         if arg_zone:
             two_stage_table = Table(config.two_stage_table_red_zone_x, config.two_stage_table_red_zone_y,
                                     config.two_stage_table_width, config.robot_width)
-            two_stage_table.set_goal('LEFT')
+            two_stage_table.set_goal(LEFT)
         else:
             two_stage_table = Table(config.two_stage_table_blue_zone_x, config.two_stage_table_blue_zone_y,
                                     config.two_stage_table_width, config.robot_width)
-            two_stage_table.set_goal('RIGHT')
+            two_stage_table.set_goal(RIGHT)
         path = Path(field=field,
                     robot=robot,
                     two_stage_table=two_stage_table,
@@ -70,6 +66,11 @@ class PathPlanning:
                     table_middle=table_middle,
                     table_up=table_up,
                     zone=arg_zone)
+        return path
+
+    def main(self, arg):
+        # create instance
+        path = self.create_instance(arg)
 
         # path planning
         points = path.path_planning()

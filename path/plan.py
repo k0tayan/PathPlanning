@@ -335,9 +335,11 @@ class Path(FlipPoint):
 
     def path_planning(self):
         self.make_flip_point2(self.zone)
-        points_1 = self.make_path()
-        distance_1 = self.get_distance(points_1)
-        return points_1
+        points = self.make_path()
+        return points
+
+    def retry_path_planning(self, result, start):
+        pass
 
     def get_flip_point(self):
         return self.flip_points
