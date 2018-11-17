@@ -7,6 +7,10 @@ FRONT = 'FRONT'
 RED = 1
 BLUE = 0
 
+UNDER = 0
+MIDDLE = 1
+UP = 2
+
 class Point:
     def __init__(self, x, y):
         self.x = x
@@ -54,3 +58,6 @@ class Field:
     def __init__(self, width, height):
         self.width = width
         self.height = height
+
+        self.red_start_zone = Point(700, 700)
+        self.blue_start_zone = Point(4400, 700)

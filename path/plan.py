@@ -161,7 +161,13 @@ class FlipPoint:
                             self.set_goal_by_zone(zone)
                 else:
                     print(7)
-                    self.set_goal_by_zone(zone)
+                    if abs(self.table_middle.x - self.table_up.x) > self.robot.width / 2 + turn_margin:
+                        if zone == BLUE:
+                            self.set_goal(RIGHT, RIGHT, FRONT)
+                        else:
+                            self.set_goal_by_zone(zone)
+                    else:
+                        self.set_goal_by_zone(zone)
         elif self.table_under.x >= self.table_middle.x >= self.table_up.x:
             if abs(self.table_under.x - self.table_middle.x) > 2 * (self.move_table_width / 2) + self.robot.width:
                 self.set_goal(LEFT, RIGHT, RIGHT)
@@ -233,7 +239,13 @@ class FlipPoint:
                             self.set_goal_by_zone(zone)
                 else:
                     print(19)
-                    self.set_goal_by_zone(zone)
+                    if abs(self.table_middle.x - self.table_up.x) > self.robot.width / 2 + turn_margin:
+                        if zone == BLUE:
+                            self.set_goal(RIGHT, RIGHT, FRONT)
+                        else:
+                            self.set_goal_by_zone(zone)
+                    else:
+                        self.set_goal_by_zone(zone)
         else:
             raise Exception('おかしいよ')
 
@@ -338,8 +350,308 @@ class Path(FlipPoint):
         points = self.make_path()
         return points
 
-    def retry_path_planning(self, result, start):
-        pass
+    def get_table_from_num(self, num):
+        if num == 0:
+            return self.table_under
+        elif num == 1:
+            return self.table_middle
+        elif num == 2:
+            return self.table_up
+
+    def retry_path_planning(self, results, start, start_angle):
+        if start_angle == RIGHT:
+            self.set_goal(RIGHT, RIGHT, RIGHT)
+        if start_angle == LEFT:
+            self.set_goal(LEFT, LEFT, LEFT)
+        if start == UP and start_angle == FRONT:
+            if self.table_up.x < self.table_middle.x:
+               self.set_goal(LEFT, LEFT, FRONT)
+            else:
+               self.set_goal(RIGHT, RIGHT, FRONT)
+
+        self.retry_flip_points = []
+        flip_point_index = 0
+        path = []
+        path.append(self.get_table_from_num(start).goal)
+        if not results[start]:
+            self.retry_flip_points.append((flip_point_index, self.get_table_from_num(start).goal_state))
+        if not results[UNDER] and results[MIDDLE]:
+            if self.table_up.goal_state == RIGHT:
+                if self.table_middle.goal.x <= self.table_up.goal.x and self.table_under.goal.x <= self.table_up.goal.x:
+                    mid = Point(self.table_up.goal.x, move_table_under_y)
+                    if self.compare_points(mid, self.table_under.goal):
+                        flip_point_index += 1
+                    else:
+                        path.append(mid)
+                        flip_point_index += 2
+                    path.append(self.table_under.goal)
+                    self.retry_flip_points.append((flip_point_index, self.table_under.goal_state))
+                elif self.table_middle.goal.x <= self.table_up.goal.x  <= self.table_under.goal.x:
+                    path.append(Point(self.table_under.goal.x, move_table_up_y))
+                    path.append(self.table_under.goal)
+                    flip_point_index += 2
+                    self.retry_flip_points.append((flip_point_index, self.table_under.goal_state))
+                elif self.table_up.goal.x <= self.table_middle.goal.x and self.table_under.goal.x <= self.table_middle.goal.x:
+                    path.append(Point(self.table_middle.goal.x, move_table_up_y))
+                    mid = Point(self.table_middle.goal.x, move_table_under_y)
+                    if self.compare_points(mid, self.table_under.goal):
+                        flip_point_index += 2
+                    else:
+                        path.append(mid)
+                        flip_point_index += 3
+                    path.append(self.table_under.goal)
+                    self.retry_flip_points.append((flip_point_index, self.table_under.goal_state))
+                elif self.table_up.x <= self.table_middle.x <= self.table_under.x:
+                    path.append(Point(self.table_under.goal.x, move_table_up_y))
+                    path.append(self.table_under.goal)
+                    flip_point_index += 2
+                    self.retry_flip_points.append((flip_point_index, self.table_under.goal_state))
+                else:
+                    print('retry error 1')
+            elif self.table_up.goal_state == LEFT:
+                if self.table_up.goal.x <= self.table_middle.goal.x <= self.table_under.goal.x:
+                    mid = Point(self.table_up.goal.x, move_table_under_y)
+                    if self.compare_points(mid, self.table_under.goal):
+                        flip_point_index += 1
+                    else:
+                        path.append(mid)
+                        flip_point_index += 2
+                    path.append(self.table_under.goal)
+                    self.retry_flip_points.append((flip_point_index, self.table_under.goal_state))
+                elif self.table_under.goal.x <= self.table_up.goal.x and self.table_under.goal.x <= self.table_middle.goal.x:
+                    path.append(Point(self.table_under.goal.x, move_table_up_y))
+                    path.append(self.table_under.goal)
+                    flip_point_index += 2
+                    self.retry_flip_points.append((flip_point_index, self.table_under.goal_state))
+                elif self.table_middle.goal.x <= self.table_up.goal.x and self.table_middle.goal.x <= self.table_under.goal.x:
+                    path.append(Point(self.table_middle.goal.x, move_table_up_y))
+                    mid = Point(self.table_middle.goal.x, move_table_under_y)
+                    if self.compare_points(mid, self.table_under.goal):
+                        flip_point_index += 2
+                    else:
+                        path.append(mid)
+                        flip_point_index += 3
+                    path.append(self.table_under.goal)
+                    self.retry_flip_points.append((flip_point_index, self.table_under.goal_state))
+                else:
+                    print('retry error 2')
+            elif self.table_up.goal_state == FRONT and self.table_middle.goal_state == RIGHT:
+                if self.table_under.goal.x < self.table_up.goal.x:
+                    print('retry front 1')
+                    mid = Point(self.table_up.goal.x, move_table_under_y)
+                    if self.compare_points(mid, self.table_under.goal):
+                        flip_point_index += 1
+                    else:
+                        path.append(mid)
+                        flip_point_index += 2
+                    path.append(self.table_under.goal)
+                    self.retry_flip_points.append((flip_point_index, self.table_under.goal_state))
+                else:
+                    print('retry front 2')
+                    path.append(Point(self.table_under.goal.x, move_table_middle_y))
+                    path.append(self.table_under.goal)
+                    flip_point_index += 2
+                    self.retry_flip_points.append((flip_point_index, self.table_under.goal_state))
+            elif self.table_up.goal_state == FRONT and self.table_middle.goal_state == LEFT:
+                if self.table_under.goal.x < self.table_up.goal.x:
+                    print('retry front 3')
+                    path.append(Point(self.table_under.goal.x, move_table_middle_y))
+                    path.append(self.table_under.goal)
+                    flip_point_index += 2
+                    self.retry_flip_points.append((flip_point_index, self.table_under.goal_state))
+                else:
+                    print('retry front 4')
+                    mid = Point(self.table_up.goal.x, move_table_under_y)
+                    if self.compare_points(mid, self.table_under.goal):
+                        flip_point_index += 1
+                    else:
+                        path.append(mid)
+                        flip_point_index += 2
+                    path.append(self.table_under.goal)
+                    self.retry_flip_points.append((flip_point_index, self.table_under.goal_state))
+            self.return_to_start_zone(path, UNDER)
+        elif not results[MIDDLE]:
+            if self.table_up.goal_state == RIGHT:
+                if self.table_middle.goal.x < self.table_up.goal.x:
+                    mid = Point(self.table_up.goal.x, move_table_middle_y)
+                    if self.compare_points(mid, self.table_middle.goal):
+                        flip_point_index += 1
+                    else:
+                        path.append(mid)
+                        flip_point_index += 2
+                    path.append(self.table_middle.goal)
+                else:
+                    path.append(Point(self.table_middle.goal.x, move_table_up_y))
+                    path.append(self.table_middle.goal)
+                    flip_point_index += 2
+                self.retry_flip_points.append((flip_point_index, self.table_middle.goal_state))
+            elif self.table_up.goal_state == LEFT:
+                if self.table_middle.goal.x < self.table_up.goal.x:
+                    path.append(Point(self.table_middle.goal.x, move_table_up_y))
+                    path.append(self.table_middle.goal)
+                    flip_point_index += 2
+                else:
+                    mid = Point(self.table_up.goal.x, move_table_middle_y)
+                    if self.compare_points(mid, self.table_middle.goal):
+                        flip_point_index += 1
+                    else:
+                        path.append(mid)
+                        flip_point_index += 2
+                    path.append(self.table_middle.goal)
+                self.retry_flip_points.append((flip_point_index, self.table_middle.goal_state))
+            elif self.table_up.goal_state == FRONT:
+                path.append(self.table_middle.goal)
+                flip_point_index += 1
+                self.retry_flip_points.append((flip_point_index, self.table_middle.goal_state))
+            else:
+                print('retry error 3')
+
+            if not results[UNDER]:
+                if self.table_under.goal_state == RIGHT:
+                    if self.table_under.goal.x < self.table_middle.goal.x:
+                        mid = Point(self.table_middle.goal.x, move_table_under_y)
+                        if self.compare_points(mid, self.table_under.goal):
+                            flip_point_index += 1
+                        else:
+                            path.append(mid)
+                            flip_point_index += 2
+                        path.append(self.table_under.goal)
+                    else:
+                        path.append(Point(self.table_under.goal.x, move_table_middle_y))
+                        path.append(self.table_under.goal)
+                        flip_point_index += 2
+                else:
+                    if self.table_under.goal.x < self.table_middle.goal.x:
+                        path.append(Point(self.table_under.goal.x, move_table_middle_y))
+                        path.append(self.table_under.goal)
+                        flip_point_index += 2
+                    else:
+                        mid = Point(self.table_middle.goal.x, move_table_under_y)
+                        if self.compare_points(mid, self.table_under.goal):
+                            flip_point_index += 1
+                        else:
+                            path.append(mid)
+                            flip_point_index += 2
+                        path.append(self.table_under.goal)
+                self.retry_flip_points.append((flip_point_index, self.table_under.goal_state))
+                self.return_to_start_zone(path, UNDER)
+            else:
+                self.return_to_start_zone(path, MIDDLE)
+        else:
+            self.return_to_start_zone(path, UP)
+        return path
+
+    def return_to_start_zone(self, path: list, last_table_num):
+        last_table = self.get_table_from_num(last_table_num)
+        if last_table_num == UNDER:
+            if self.zone:
+                if last_table.goal_state == LEFT:
+                    if last_table.goal.x <= two_stage_table_red_zone_x - two_stage_table_width/2 - robot_width/2:
+                        path.append(self.field.red_start_zone)
+                    else:
+                        path.append(Point(two_stage_table_red_zone_x - two_stage_table_width/2 - robot_width/2, 4500))
+                        path.append(self.field.red_start_zone)
+                else:
+                    path.append(Point(last_table.goal.x, 4500))
+                    if last_table.goal.x <= two_stage_table_red_zone_x - two_stage_table_width/2 - robot_width/2:
+                        path.append(self.field.red_start_zone)
+                    else:
+                        path.append(Point(two_stage_table_red_zone_x - two_stage_table_width/2 - robot_width/2, 4500))
+                        path.append(self.field.red_start_zone)
+            else:
+                if last_table.goal_state == RIGHT:
+                    if two_stage_table_blue_zone_x + two_stage_table_width/2 + robot_width/2 <= last_table.goal.x:
+                        path.append(self.field.blue_start_zone)
+                    else:
+                        path.append(Point(two_stage_table_blue_zone_x + two_stage_table_width/2 + robot_width/2, 4500))
+                        path.append(self.field.blue_start_zone)
+                else:
+                    path.append(Point(last_table.goal.x, 4500))
+                    if two_stage_table_blue_zone_x + two_stage_table_width/2 + robot_width/2 <= last_table.goal.x:
+                        path.append(self.field.blue_start_zone)
+                    else:
+                        path.append(Point(two_stage_table_blue_zone_x + two_stage_table_width/2 + robot_width/2, 4500))
+                        path.append(self.field.blue_start_zone)
+        elif last_table_num == MIDDLE:
+            if self.zone:
+                if last_table.goal_state == LEFT:
+                    if last_table.x <= self.table_under.x and last_table.goal.x <= two_stage_table_red_zone_x - two_stage_table_width/2:
+                        path.append(self.field.red_start_zone)
+                    elif last_table.x <= self.table_under.x:
+                        path.append(Point(3500, 4500))
+                        path.append(self.field.red_start_zone)
+                    elif last_table.goal.x <= two_stage_table_red_zone_x - two_stage_table_width/2 - robot_width/2:
+                        path.append(Point(self.table_under.goal.x, 4500))
+                        path.append(self.field.red_start_zone)
+                    else:
+                        path.append(Point(700, move_table_middle_y))
+                        path.append(self.field.red_start_zone)
+                else:
+                    if (last_table.goal.x < self.table_under.x ) and abs((last_table.x - move_table_width / 2) - (self.table_under.x + move_table_width / 2)) > self.robot.width:
+                        path.append(Point(last_table.goal.x, 4500))
+                        path.append(Point(700, 4500))
+                        path.append(self.field.red_start_zone)
+                    elif last_table.x <= self.table_under.x:
+                        path.append(Point(self.table_under.goal.x, move_table_middle_y))
+                        path.append(Point(self.table_under.goal.x, 4500))
+                        path.append(Point(700, 4500))
+                        path.append(self.field.red_start_zone)
+                    else:
+                        path.append(Point(last_table.goal.x, 4500))
+                        path.append(Point(700, 4500))
+                        path.append(self.field.red_start_zone)
+            else:
+                if last_table.goal_state == LEFT:
+                    if (self.table_under.x < last_table.x) and abs((last_table.x - move_table_width / 2) - (self.table_under.x + move_table_width / 2)) > self.robot.width:
+                        path.append(Point(last_table.goal.x, 4500))
+                        path.append(Point(4400, 4500))
+                        path.append(self.field.blue_start_zone)
+                    elif last_table.x <= self.table_under.x:
+                        path.append(Point(last_table.goal.x, 4500))
+                        path.append(Point(4400, 4500))
+                        path.append(self.field.blue_start_zone)
+                    else:
+                        path.append(Point(self.table_under.goal.x, move_table_middle_y))
+                        path.append(Point(self.table_under.goal.x, 4500))
+                        path.append(Point(4400, 4500))
+                        path.append(self.field.blue_start_zone)
+                else:
+                    path.append(Point(4400, move_table_middle_y))
+                    path.append(self.field.blue_start_zone)
+
+        else:
+            if self.zone:
+                if last_table.goal_state == LEFT:
+                    path.append(Point(700, move_table_up_y))
+                    path.append(self.field.red_start_zone)
+                elif last_table.goal_state == FRONT and last_table.x < self.table_middle.x:
+                    path.append(Point(700, move_table_middle_y))
+                    path.append(self.field.red_start_zone)
+                elif last_table.goal_state == FRONT and self.table_middle.x <last_table.x:
+                    path.append(Point(4400, move_table_middle_y))
+                    path.append(self.field.red_start_zone)
+                else:
+                    path.append(Point(4400, move_table_up_y))
+                    path.append(Point(4400, 4500))
+                    path.append(Point(700, 4500))
+                    path.append(self.field.red_start_zone)
+            else:
+                if last_table.goal_state == RIGHT:
+                    path.append(Point(4400, move_table_up_y))
+                    path.append(self.field.blue_start_zone)
+                elif last_table.goal_state == FRONT and self.table_middle.x < last_table.x:
+                    path.append(Point(4400, move_table_middle_y))
+                    path.append(self.field.blue_start_zone)
+                elif last_table.goal_state == FRONT and last_table.x < self.table_middle.x:
+                    path.append(Point(700, move_table_middle_y))
+                    path.append(Point(700, 4500))
+                    path.append(Point(4400, 4500))
+                    path.append(self.field.blue_start_zone)
+                else:
+                    path.append(Point(700, move_table_up_y))
+                    path.append(Point(700, 4500))
+                    path.append(Point(4400, 4500))
+                    path.append(self.field.blue_start_zone)
 
     def get_flip_point(self):
         return self.flip_points

@@ -134,7 +134,7 @@ class FieldView(Config):
         self.white_line(img, self.f(6450, 4000), self.f(6550, 4000))
         self.white_line(img, self.f(7450, 1000), self.f(7550, 1000))
         self.white_line(img, self.f(7450, 4000), self.f(7550, 4000))
-        self.img = img
+        return img
 
     def f(self, x, y):
         return int(x * (1280 / 8000)), int(y * (720 / 5000))
@@ -173,7 +173,18 @@ class FieldView(Config):
             y, x = point
             cv2.circle(image, self.f(x, y), 10, (128, 0, 128), -1)
 
-    def move_table(self, image, points):
+    def retry_path_line(self, image, points):
+        m = len(points) - 1
+        for i, point in enumerate(points):
+            y, x = point
+            if i != m:
+                y2, x2 = points[i + 1]
+                cv2.line(image, self.f(x, y), self.f(x2, y2), (255, 128, 0), 3)
+        for i, point in enumerate(points):
+            y, x = point
+            cv2.circle(image, self.f(x, y), 10, (128, 0, 128), -1)
+
+    def move_table(self, image, points, results=None):
         for i, point in enumerate(points):
             y = point
             if i == 0:
@@ -185,16 +196,34 @@ class FieldView(Config):
             else:
                 x = 0
             cv2.rectangle(image, self.f(x + 250, y - 250), self.f(x - 250, y + 250), (0, 255, 255), -1)
+            if results:
+                if results[i]:
+                    cv2.circle(image, self.f(x, y), 50, Color.red, thickness=5)
 
     def draw_field(self, move_table_pos, points):
-        self.init()
+        img = self.init()
         if self.zone:
-            cv2.rectangle(self.img, self.f(0, 0), self.f(2000, 1200), (55, 54, 149), -1)
-            self.two_stage_table(self.img, (3500, 3000))
+            cv2.rectangle(img, self.f(0, 0), self.f(2000, 1200), (55, 54, 149), -1)
+            self.two_stage_table(img, (3500, 3000))
         else:
-            cv2.rectangle(self.img, self.f(2000, 3800), self.f(0, 5000), (165, 78, 62), -1)
-            self.two_stage_table(self.img, (3500, 2000))
-        self.move_table(self.img, move_table_pos)
+            cv2.rectangle(img, self.f(2000, 3800), self.f(0, 5000), (165, 78, 62), -1)
+            self.two_stage_table(img, (3500, 2000))
+        self.move_table(img, move_table_pos)
         points = [(int(point.x), int(point.y)) for point in points]
-        self.path_line(self.img, points)
-        return self.img
+        self.path_line(img, points)
+        return img
+
+    def draw_retry(self, move_table_pos, points, retry_points, results):
+        img = self.init()
+        if self.zone:
+            cv2.rectangle(img, self.f(0, 0), self.f(2000, 1200), (55, 54, 149), -1)
+            self.two_stage_table(img, (3500, 3000))
+        else:
+            cv2.rectangle(img, self.f(2000, 3800), self.f(0, 5000), (165, 78, 62), -1)
+            self.two_stage_table(img, (3500, 2000))
+        self.move_table(img, move_table_pos, results)
+        retry_points = [(int(point.x), int(point.y)) for point in retry_points]
+        points = [(int(point.x), int(point.y)) for point in points]
+        self.path_line(img, points)
+        self.retry_path_line(img, retry_points)
+        return img

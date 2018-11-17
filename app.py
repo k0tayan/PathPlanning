@@ -250,16 +250,23 @@ class App(Parameter, Utils, FieldView, Draw, Event, ):
 
         if self.detection_success and not self.table_detection:
             global timer
-            if time.time() - timer > 3:  # 3秒に1回実行
+            if time.time() - timer > 0.5:  # 0.5秒に1回実行
                 # 画面内の座標を送信する座標に変換
                 ret = self.make_distance_to_send(self.table_set)
                 # 経路計画
                 if self.points is None:
                     self.points, self.flip_points = self.planner.main([ret.under, ret.middle, ret.up, self.zone])
-                self.planner.send(self.points, self.flip_points)
-                # フィールド描画
-                field_view = self.draw_field((ret.under, ret.middle, ret.up), self.points)
-                cv2.imshow(self.field_window_name, field_view)
+
+                if not self.planner.retry_start:
+                    self.planner.send(self.points, self.flip_points, False)
+                    # フィールド描画
+                    field_view = self.draw_field((ret.under, ret.middle, ret.up), self.points)
+                    cv2.imshow(self.field_window_name, field_view)
+                else:
+                    retry_points, retry_flip_points = self.planner.retry((ret.under, ret.middle, ret.up, self.zone), self.bottle_result)
+                    self.planner.send(self.points, self.flip_points, True)
+                    field_view = self.draw_retry((ret.under, ret.middle, ret.up), self.points, retry_points)
+                    cv2.imshow(self.field_window_name, field_view)
                 self.yukari.play_finish_path_planning()
                 timer = time.time()
 
@@ -281,6 +288,7 @@ class App(Parameter, Utils, FieldView, Draw, Event, ):
         if key == ord('b') and not self.table_detection:
             self.yukari.play_detecting_table()
             self.table_detection = True
+            self.planner.retry_start = False
 
         # 画像収集
         if key == ord('r') and not self.table_detection:
@@ -307,6 +315,9 @@ class App(Parameter, Utils, FieldView, Draw, Event, ):
 
         if key == ord('z'):
             self.ptlist.reset_points()
+
+        if key == ord('i'):
+            self.planner.retry_start = True
 
     def run(self):
         try:

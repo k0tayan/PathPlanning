@@ -1,12 +1,9 @@
 import numpy as np
-import matplotlib.pyplot as plt
-import random
 from path import *
-from path.objects import (LEFT, RIGHT)
+from path.objects import (LEFT, RIGHT, FRONT, UNDER, MIDDLE, UP)
 import sys
 import coloredlogs, logging
 import threading
-import cv2
 
 coloredlogs.install()
 
@@ -17,6 +14,10 @@ class PathPlanning:
         self.result = [None, None, None]
         self.log = True
         self.tcp = None
+        self.retry_start = False
+        self.retry_start_angle = None
+        if send:
+            self.receive()
 
     def send_packet(self, packet):
         try:
@@ -26,15 +27,31 @@ class PathPlanning:
         except Exception as error:
             logging.error(str(error))
 
-    def send(self, points, flip_points):
+    def send(self, points, flip_points, retry):
         if self.use_send:
             try:
-                self.tcp = Tcp(host='192.168.0.14', port=10001)
-                packet = self.tcp.create_packet(points, flip_points, self.result)
+                self.tcp = Tcp(host='192.168.11.3', port=10001)
+                packet = self.tcp.create_packet(points, flip_points, retry)
                 thread = threading.Thread(target=self.send_packet, args=(packet,), daemon=True)
                 thread.start()
             except Exception as error:
                 logging.error(str(error))
+
+    def __receive(self):
+        self.serv = Tcp(host='0.0.0.0', port=10001)
+        self.serv.server()
+        print('start receive')
+        while True:
+            msg = self.serv.receive()
+            if not msg:
+                continue
+            else:
+                self.retry_start = True
+            print(msg)
+
+    def receive(self):
+        thread = threading.Thread(target=self.__receive, daemon=True)
+        thread.start()
 
     def fix(self, coord):
         return (lambda x: 1250 if x < 1250 else (3750 if x > 3750 else x))(coord)
@@ -76,6 +93,8 @@ class PathPlanning:
         points = path.path_planning()
         flip_points = path.get_flip_point()
 
+        self.retry_start_angle = flip_points[-1][1]
+
         if self.log:
             logging.info("path_planning start")
             print(f"移動距離:{path.get_distance(points)}mm")
@@ -86,6 +105,19 @@ class PathPlanning:
         self.log = False
 
         return points, flip_points
+
+    def retry(self, arg, results):
+        # create instance
+        path = self.create_instance(arg)
+
+        # retry path planning
+        points = path.retry_path_planning(results, UP, self.retry_start_angle)
+        p = list(map(str, points))
+        logging.info(f"retry points:{p}")
+        retry_flip_points = path.retry_flip_points
+        logging.info(f"retry flip_points:{retry_flip_points}")
+        return points, retry_flip_points
+
 
     def set_result(self, under, middle, up):
         self.result = [under, middle, up]

@@ -1,6 +1,6 @@
 import socket
 import struct
-from .objects import Point
+from .objects import Point, LEFT, RIGHT, FRONT
 
 class Tcp:
     def __init__(self, host='192.168.0.14', port=10001):
@@ -27,10 +27,10 @@ class Tcp:
         self.clientsock, client_address = self.serversock.accept()
 
     def receive(self):
-        rcvmsg = self.clientsock.recv(13)
+        rcvmsg = self.clientsock.recv(1)
         return rcvmsg
 
-    def create_packet(self, points, flip_points, result):
+    def create_packet(self, points, flip_points, retry=False):
         send_points = points.copy()
         for i in range(8 - len(send_points)):
             send_points.append(Point(0, 0))
@@ -38,8 +38,9 @@ class Tcp:
         points_y = [point.y for point in send_points]
         x_l = list(map(int, points_x))
         y_l = list(map(int, points_y))
-        x_l[0] = 0
-        y_l[0] = 0
+        if retry:
+            x_l[0] = 0 # とらないようにするために、0, 0にしている
+            y_l[0] = 0
 
         buf = []
         buf.append(0)
@@ -53,15 +54,18 @@ class Tcp:
         for i, flip_point in enumerate(flip_points):
             data = 0
             data += flip_point[0] << 2
-            if flip_point[1] == 'LEFT':
+            if flip_point[1] == LEFT:
                 data += 0x00
-            elif flip_point[1] == 'RIGHT':
+            elif flip_point[1] == RIGHT:
                 data += 0x01
-            elif flip_point[1] == 'FRONT':
+            elif flip_point[1] == FRONT:
                 data += 0x02
+            data += 0x20
             buf.append(data)
+
+        for i in range(3 - len(flip_points)):
+            buf.append(0)
         buf[0] = (sum(buf[1:]) & 0x7f) | 0x80
-        # print(result)
         # for i, tmp in enumerate(buf):
         #    print(f"[{i}]", tmp)
         p = struct.pack('B' * len(buf), *buf)
