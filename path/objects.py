@@ -29,11 +29,19 @@ class Table(Point):
     def __init__(self, x, y, width, robot_width):
         super().__init__(x, y)
         self.width = width
-        self.left_goal: Point = Point(x - width / 2 - robot_width / 2, y)
-        self.right_goal: Point = Point(x + width / 2 + robot_width / 2, y)
+        self.left_goal: Point = Point(self.fix(x - width / 2 - robot_width / 2), y)
+        self.right_goal: Point = Point(self.fix(x + width / 2 + robot_width / 2), y)
         self.front_goal: Point = Point(x, y - width / 2 - robot_width / 2)
         self.goal: Point = None
         self.goal_state: str = None
+
+    def fix(self, coord):
+        if coord < 700:
+            return 700
+        elif coord > 4400:
+            return 4400
+        else:
+            return coord
 
     def set_goal(self, direction):
         """

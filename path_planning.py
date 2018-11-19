@@ -12,6 +12,7 @@ class PathPlanning:
         self.use_send = send
         # 立っていたらTrue、立っていなかったらFalse
         self.result = [None, None, None]
+        self.shot = [False, False, False]
         self.log = True
         self.tcp = None
         self.retry_start = False
@@ -19,10 +20,13 @@ class PathPlanning:
         if send:
             self.receive()
 
-    def send_packet(self, packet):
+    def send_packet(self, packet, use_clientsock=False):
         try:
-            self.tcp.connect()
-            self.tcp.send(packet)
+            if use_clientsock:
+                self.serv.clientsock.send(packet)
+            else:
+                self.tcp.connect()
+                self.tcp.send(packet)
             logging.info("send:success")
         except Exception as error:
             logging.error(str(error))
@@ -37,10 +41,15 @@ class PathPlanning:
     def send(self, points, flip_points, retry):
         if self.use_send:
             try:
-                if not retry:
+                if not retry and self.serv.clientsock is None:
                     self.tcp = Tcp(host='192.168.11.3', port=10001)
                     packet = self.tcp.create_packet(points, flip_points, retry)
                     thread = threading.Thread(target=self.send_packet, args=(packet,), daemon=True)
+                    thread.start()
+                elif not retry and self.serv.clientsock:
+                    self.tcp = Tcp(host='192.168.11.3', port=10001)
+                    packet = self.tcp.create_packet(points, flip_points, retry)
+                    thread = threading.Thread(target=self.send_packet, args=(packet, True), daemon=True)
                     thread.start()
                 elif self.serv.clientsock is None:
                     self.tcp = Tcp(host='192.168.11.3', port=10001)
@@ -63,7 +72,18 @@ class PathPlanning:
             if not msg:
                 continue
             else:
-                self.retry_start = True
+                if msg == b'\x01':
+                    print("1200で発射")
+                    self.shot[UNDER] = True
+                elif msg == b'\x02':
+                    print("1500で発射")
+                    self.shot[MIDDLE] = True
+                elif msg == b'\x03':
+                    print("1800で発射")
+                    self.shot[UP] = True
+                    self.retry_start = True
+                else:
+                    print(msg)
             # self.serv.clientsock.sendall(b'0')
             # print(msg)
 

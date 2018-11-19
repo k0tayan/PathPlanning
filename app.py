@@ -66,6 +66,8 @@ class App(Parameter, Utils, FieldView, Draw, Event, ):
         return self.get_data_from_webcam()
 
     def remove_separator(self, color_image):
+        if self.click_mode:
+            return
         # セパレータ消すやつ
         if self.zone:
             if self.remove_separator_middle:
@@ -234,14 +236,17 @@ class App(Parameter, Utils, FieldView, Draw, Event, ):
                     self.check_standing(for_check, self.table_set)
                     # self.table_set.reset_standing_result()
 
-                if not np.all(self.table_set.result is None) and self.planner.retry_start:
+                if not np.all(self.table_set.result is None):
                     play_result = []
-                    if self.bottle_result[0] != self.table_set.result[0]:
-                        play_result.append([0, self.table_set.result[0]])
-                    if self.bottle_result[1] != self.table_set.result[1]:
-                        play_result.append([1, self.table_set.result[1]])
-                    if self.bottle_result[2] != self.table_set.result[2]:
-                        play_result.append([2, self.table_set.result[2]])
+                    if self.planner.shot[0]:
+                        if self.bottle_result[0] != self.table_set.result[0]:
+                            play_result.append([0, self.table_set.result[0]])
+                    if self.planner.shot[1]:
+                        if self.bottle_result[1] != self.table_set.result[1]:
+                            play_result.append([1, self.table_set.result[1]])
+                    if self.planner.shot[2]:
+                        if self.bottle_result[2] != self.table_set.result[2]:
+                            play_result.append([2, self.table_set.result[2]])
                     if play_result:
                         self.yukari.play_results(play_result)
                     self.bottle_result = self.table_set.result
