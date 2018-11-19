@@ -3,7 +3,7 @@ import struct
 from .objects import Point, LEFT, RIGHT, FRONT
 
 class Tcp:
-    def __init__(self, host='192.168.0.14', port=10001):
+    def __init__(self, host='192.168.11.3', port=10001):
         self.host = host
         self.port = port
 
@@ -20,6 +20,7 @@ class Tcp:
         self._socket.close()
 
     def server(self):
+        self.clientsock = None
         self.serversock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.serversock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.serversock.bind((self.host, self.port))
@@ -38,7 +39,7 @@ class Tcp:
         points_y = [point.y for point in send_points]
         x_l = list(map(int, points_x))
         y_l = list(map(int, points_y))
-        if retry:
+        if not retry:
             x_l[0] = 0 # とらないようにするために、0, 0にしている
             y_l[0] = 0
 
@@ -63,10 +64,10 @@ class Tcp:
             data += 0x20
             buf.append(data)
 
-        for i in range(3 - len(flip_points)):
+        for i in range(4 - len(flip_points)):
             buf.append(0)
         buf[0] = (sum(buf[1:]) & 0x7f) | 0x80
         # for i, tmp in enumerate(buf):
-        #    print(f"[{i}]", tmp)
+        #    print(f"[{i}]", bin(tmp))
         p = struct.pack('B' * len(buf), *buf)
         return p

@@ -8,7 +8,7 @@ import numpy as np
 import os
 
 path = os.path.dirname(os.path.abspath(__file__))
-filename = path + '/model2.pb'  # model1.pb 水増しなし model2.pb 水増しあり
+filename = path + '/model1.pb'  # model1.pb 水増しなし model2.pb 水増しあり
 labels_filename = path + '/labels.txt'
 
 network_input_size = 227

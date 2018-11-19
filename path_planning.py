@@ -27,13 +27,30 @@ class PathPlanning:
         except Exception as error:
             logging.error(str(error))
 
+    def send_packet_retry(self, packet):
+        try:
+            self.serv.clientsock.send(packet)
+            logging.info("send:retry success")
+        except Exception as error:
+            print(error)
+
     def send(self, points, flip_points, retry):
         if self.use_send:
             try:
-                self.tcp = Tcp(host='192.168.11.3', port=10001)
-                packet = self.tcp.create_packet(points, flip_points, retry)
-                thread = threading.Thread(target=self.send_packet, args=(packet,), daemon=True)
-                thread.start()
+                if not retry:
+                    self.tcp = Tcp(host='192.168.11.3', port=10001)
+                    packet = self.tcp.create_packet(points, flip_points, retry)
+                    thread = threading.Thread(target=self.send_packet, args=(packet,), daemon=True)
+                    thread.start()
+                elif self.serv.clientsock is None:
+                    self.tcp = Tcp(host='192.168.11.3', port=10001)
+                    packet = self.tcp.create_packet(points, flip_points, retry)
+                    thread = threading.Thread(target=self.send_packet, args=(packet,), daemon=True)
+                    thread.start()
+                else:
+                    packet = self.tcp.create_packet(points, flip_points, retry)
+                    thread = threading.Thread(target=self.send_packet_retry, args=(packet,), daemon=True)
+                    thread.start()
             except Exception as error:
                 logging.error(str(error))
 
@@ -47,7 +64,8 @@ class PathPlanning:
                 continue
             else:
                 self.retry_start = True
-            print(msg)
+            # self.serv.clientsock.sendall(b'0')
+            # print(msg)
 
     def receive(self):
         thread = threading.Thread(target=self.__receive, daemon=True)

@@ -29,11 +29,11 @@ class Utils(Config, Path):
             f = open(self.setting_path, 'r')
             self.settings = json.load(f)
             if self.zone:
-                self.settings['rms'] = 9
+                self.settings['rms'] = 19
             else:
-                self.settings['rms'] = 18
+                self.settings['rms'] = 20
         except:
-            self.settings = {'h': 180, 's': 45, 'v': 255, 'th': 210, 'k': 10, 'rms': 9}
+            self.settings = {'h': 180, 's': 45, 'v': 255, 'th': 210, 'k': 10, 'rms': 19}
 
         # Load and intialize the model
         initialize()

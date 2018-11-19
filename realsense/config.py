@@ -13,7 +13,7 @@ class Config:
     width = 1280
     height = 720
     seconds = 10
-    send = False
+    send = True
     use_standing_detection = True
 
 

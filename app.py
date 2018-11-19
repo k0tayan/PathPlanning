@@ -11,7 +11,7 @@ from yukari.player import Yukari
 
 from realsense.consts import NPOINTS
 
-camera = 0 # なんか知らんが毎回変わる
+camera = 1 # なんか知らんが毎回変わる
 timer = 0  # 初期化
 sc = 1
 coloredlogs.install()
@@ -79,10 +79,10 @@ class App(Parameter, Utils, FieldView, Draw, Event, ):
                 cv2.fillPoly(color_image, pts=[pts], color=Color.red)
 
                 pts = np.array([[0, self.remove_side_e + 150], [f(self.remove_side_e + 150), self.remove_side_e + 150],
-                                [0, self.height]])
+                                [35, self.height], [0, self.height]])
                 cv2.fillPoly(color_image, pts=[pts], color=Color.red)
             else:
-                pts = np.array([[0, 0], [self.remove_side * 20, 0], [0, self.height]])
+                pts = np.array([[0, 0], [self.remove_side * 20, 0], [35, self.height], [0, self.height]])
                 cv2.fillPoly(color_image, pts=[pts], color=Color.red)
         else:
             if self.remove_separator_middle:
@@ -234,7 +234,7 @@ class App(Parameter, Utils, FieldView, Draw, Event, ):
                     self.check_standing(for_check, self.table_set)
                     # self.table_set.reset_standing_result()
 
-                if not np.all(self.table_set.result is None):
+                if not np.all(self.table_set.result is None) and self.planner.retry_start:
                     play_result = []
                     if self.bottle_result[0] != self.table_set.result[0]:
                         play_result.append([0, self.table_set.result[0]])
@@ -250,7 +250,7 @@ class App(Parameter, Utils, FieldView, Draw, Event, ):
 
         if self.detection_success and not self.table_detection:
             global timer
-            if time.time() - timer > 0.5:  # 0.5秒に1回実行
+            if time.time() - timer > 0.6:  # 0.5秒に1回実行
                 # 画面内の座標を送信する座標に変換
                 ret = self.make_distance_to_send(self.table_set)
                 # 経路計画
@@ -264,8 +264,8 @@ class App(Parameter, Utils, FieldView, Draw, Event, ):
                     cv2.imshow(self.field_window_name, field_view)
                 else:
                     retry_points, retry_flip_points = self.planner.retry((ret.under, ret.middle, ret.up, self.zone), self.bottle_result)
-                    self.planner.send(self.points, self.flip_points, True)
-                    field_view = self.draw_retry((ret.under, ret.middle, ret.up), self.points, retry_points)
+                    self.planner.send(retry_points, retry_flip_points, True)
+                    field_view = self.draw_retry((ret.under, ret.middle, ret.up), self.points, retry_points, self.bottle_result)
                     cv2.imshow(self.field_window_name, field_view)
                 self.yukari.play_finish_path_planning()
                 timer = time.time()

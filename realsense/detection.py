@@ -8,15 +8,15 @@ class ApproximationFunction(Path):
     def __init__(self):
         # フロント下
         data = np.loadtxt(self.under_front, delimiter=',')
-        self.under_front_res = np.polyfit(data[:, 1], data[:, 0], 3)
+        self.under_front_res = np.polyfit(data[:, 1], data[:, 0], 1)
 
         # フロント中央
         data = np.loadtxt(self.middle_front, delimiter=',')
-        self.middle_front_res = np.polyfit(data[:, 1], data[:, 0], 3)
+        self.middle_front_res = np.polyfit(data[:, 1], data[:, 0], 1)
 
         # フロント上
         data = np.loadtxt(self.up_front, delimiter=',')
-        self.up_front_res = np.polyfit(data[:, 1], data[:, 0], 3)
+        self.up_front_res = np.polyfit(data[:, 1], data[:, 0], 1)
 
     def make_distance_under_front_by_center(self, x):
         return np.poly1d(self.under_front_res)(x)
