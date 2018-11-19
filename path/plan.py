@@ -618,7 +618,6 @@ class Path(FlipPoint):
                 else:
                     path.append(Point(4400, move_table_middle_y))
                     path.append(self.field.blue_start_zone)
-
         else:
             if self.zone:
                 if last_table.goal_state == LEFT:
@@ -648,10 +647,19 @@ class Path(FlipPoint):
                     path.append(Point(4400, 4500))
                     path.append(self.field.blue_start_zone)
                 else:
-                    path.append(Point(700, move_table_up_y))
-                    path.append(Point(700, 4500))
-                    path.append(Point(4400, 4500))
-                    path.append(self.field.blue_start_zone)
+                    if ((self.table_middle.x+move_table_width/2) < last_table.goal.x) and ((self.table_under.x+move_table_width/2) < last_table.goal.x):
+                        path.append(Point(last_table.goal.x, move_table_middle_y))
+                        path.append(Point(4000, move_table_under_y))
+                        path.append(self.field.blue_start_zone)
+                    elif ((self.table_middle.x+move_table_width/2) < last_table.goal.x):
+                        path.append(Point(last_table.goal.x, move_table_middle_y))
+                        path.append(Point(4400, move_table_middle_y))
+                        path.append(self.field.blue_start_zone)
+                    else:
+                        path.append(Point(700, move_table_up_y))
+                        path.append(Point(700, 4500))
+                        path.append(Point(4400, 4500))
+                        path.append(self.field.blue_start_zone)
 
     def get_flip_point(self):
         return self.flip_points
