@@ -35,6 +35,7 @@ class App(Parameter, Utils, FieldView, Draw, Event, ):
         self.quit = False
         self.yukari = Yukari()
         self.remove_separator_middle = False
+        self.use_remove_separator = True
         self.points = None
         self.flip_points = None
 
@@ -67,6 +68,8 @@ class App(Parameter, Utils, FieldView, Draw, Event, ):
 
     def remove_separator(self, color_image):
         if self.click_mode:
+            return
+        if not self.use_remove_separator:
             return
         # セパレータ消すやつ
         if self.zone:
@@ -313,16 +316,24 @@ class App(Parameter, Utils, FieldView, Draw, Event, ):
             self.save_param(self.h, self.s, self.v, self.lv, self.th, self.kn, self.remove_side)
 
         if key == ord('e'):
+            # セパレータ削除における中央を消すかどうかの切り替え
             self.remove_separator_middle = not self.remove_separator_middle
 
         if key == ord('c'):
+            # クリックモード切替
             self.click_mode = not self.click_mode
 
         if key == ord('z'):
+            # クリックした座標をリセット
             self.ptlist.reset_points()
 
         if key == ord('i'):
+            # 強制二週目
             self.planner.retry_start = True
+
+        if key == ord('f'):
+            # セパレータ削除の切り替え
+            self.use_remove_separator = not self.use_remove_separator
 
     def run(self):
         try:
