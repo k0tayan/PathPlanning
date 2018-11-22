@@ -9,7 +9,7 @@ from realsense import *
 from path_planning import PathPlanning
 from yukari.player import Yukari
 
-from realsense.consts import NPOINTS
+from realsense.consts import NPOINTS, UNDER_NUM, MIDDLE_NUM, UP_NUM
 
 camera = 1 # なんか知らんが毎回変わる
 timer = 0  # 初期化
@@ -241,15 +241,21 @@ class App(Parameter, Utils, FieldView, Draw, Event, ):
 
                 if not np.all(self.table_set.result is None):
                     play_result = []
-                    if self.planner.shot[0]:
-                        if self.bottle_result[0] != self.table_set.result[0]:
-                            play_result.append([0, self.table_set.result[0]])
-                    if self.planner.shot[1]:
-                        if self.bottle_result[1] != self.table_set.result[1]:
-                            play_result.append([1, self.table_set.result[1]])
-                    if self.planner.shot[2]:
-                        if self.bottle_result[2] != self.table_set.result[2]:
-                            play_result.append([2, self.table_set.result[2]])
+                    if self.planner.shot[UNDER_NUM]:
+                        if self.bottle_result[UNDER_NUM] != self.table_set.result[UNDER_NUM] and not (self.bottle_result[UNDER_NUM] and not self.table_set.result[UNDER_NUM]):
+                            play_result.append([UNDER_NUM, self.table_set.result[UNDER_NUM]])
+                    else:
+                        self.table_set.under.standing = None
+                    if self.planner.shot[MIDDLE_NUM]:
+                        if self.bottle_result[MIDDLE_NUM] != self.table_set.result[MIDDLE_NUM] and not (self.bottle_result[MIDDLE_NUM] and not self.table_set.result[MIDDLE_NUM]):
+                            play_result.append([MIDDLE_NUM, self.table_set.result[MIDDLE_NUM]])
+                    else:
+                        self.table_set.middle.standing = None
+                    if self.planner.shot[UP_NUM]:
+                        if self.bottle_result[UP_NUM] != self.table_set.result[UP_NUM] and not (self.bottle_result[UP_NUM] and not self.table_set.result[UP_NUM]):
+                            play_result.append([UP_NUM, self.table_set.result[UP_NUM]])
+                    else:
+                        self.table_set.up.standing = None
                     if play_result:
                         self.yukari.play_results(play_result)
                     self.bottle_result = self.table_set.result
@@ -287,7 +293,6 @@ class App(Parameter, Utils, FieldView, Draw, Event, ):
 
         # ペットボトル判定シーケンスに移行
         if key == ord('n') and self.table_detection and self.detection_success:
-            # todo ゆかりさんボイス
             # self.yukari.play_move_to_check_standing_sequence()
             self.table_detection = False
             logging.info('END DETECTION')

@@ -448,14 +448,21 @@ class Path(FlipPoint):
                     self.retry_flip_points.append((flip_point_index, self.table_under.goal_state))
                 else:
                     print('retry front 2')
-                    path.append(Point(self.table_under.goal.x, move_table_middle_y))
+                    if 3500 <= self.table_under.goal.x:
+                        path.append(Point(self.table_under.goal.x-550, move_table_middle_y+500))
+                    else:
+                        path.append(Point(self.table_under.goal.x, move_table_middle_y+500))
                     path.append(self.table_under.goal)
                     flip_point_index += 2
                     self.retry_flip_points.append((flip_point_index, self.table_under.goal_state))
             elif self.table_up.goal_state == FRONT and self.table_middle.goal_state == LEFT:
                 if self.table_under.goal.x < self.table_up.goal.x:
                     print('retry front 3')
-                    path.append(Point(self.table_under.goal.x, move_table_middle_y))
+                    # todo: 要デバッグ
+                    if self.table_under.goal.x <= 1500:
+                        path.append(Point(self.table_under.goal.x+550, move_table_middle_y+500))
+                    else:
+                        path.append(Point(self.table_under.goal.x, move_table_middle_y+500))
                     path.append(self.table_under.goal)
                     flip_point_index += 2
                     self.retry_flip_points.append((flip_point_index, self.table_under.goal_state))
@@ -584,36 +591,36 @@ class Path(FlipPoint):
                         path.append(Point(self.table_under.goal.x, move_table_middle_y))
                         path.append(self.field.red_start_zone)
                     else:
-                        path.append(Point(700, move_table_middle_y))
+                        path.append(Point(X_MIN, move_table_middle_y))
                         path.append(self.field.red_start_zone)
                 else:
                     if (last_table.goal.x < self.table_under.x ) and abs((last_table.x - move_table_width / 2) - (self.table_under.x + move_table_width / 2)) > self.robot.width:
                         path.append(Point(last_table.goal.x, 4500))
-                        path.append(Point(700, 4500))
+                        path.append(Point(X_MIN, 4500))
                         path.append(self.field.red_start_zone)
                     elif last_table.x <= self.table_under.x:
                         path.append(Point(self.table_under.goal.x, move_table_middle_y))
                         path.append(Point(self.table_under.goal.x, 4500))
-                        path.append(Point(700, 4500))
+                        path.append(Point(X_MIN, 4500))
                         path.append(self.field.red_start_zone)
                     else:
                         path.append(Point(last_table.goal.x, 4500))
-                        path.append(Point(700, 4500))
+                        path.append(Point(X_MIN, 4500))
                         path.append(self.field.red_start_zone)
             else:
                 if last_table.goal_state == LEFT:
                     if (self.table_under.x < last_table.x) and abs((last_table.x - move_table_width / 2) - (self.table_under.x + move_table_width / 2)) > self.robot.width:
                         path.append(Point(last_table.goal.x, 4500))
-                        path.append(Point(4400, 4500))
+                        path.append(Point(X_MAX, 4500))
                         path.append(self.field.blue_start_zone)
                     elif last_table.x <= self.table_under.x:
                         path.append(Point(last_table.goal.x, 4500))
-                        path.append(Point(4400, 4500))
+                        path.append(Point(X_MAX, 4500))
                         path.append(self.field.blue_start_zone)
                     else:
                         path.append(Point(self.table_under.goal.x, move_table_middle_y))
                         path.append(Point(self.table_under.goal.x, 4500))
-                        path.append(Point(4400, 4500))
+                        path.append(Point(X_MAX, 4500))
                         path.append(self.field.blue_start_zone)
                 else:
                     if self.table_under.x <= last_table.x:
@@ -624,10 +631,10 @@ class Path(FlipPoint):
         else:
             if self.zone:
                 if last_table.goal_state == LEFT:
-                    path.append(Point(700, move_table_up_y))
+                    path.append(Point(X_MIN, move_table_up_y))
                     path.append(self.field.red_start_zone)
                 elif last_table.goal_state == FRONT and last_table.x < self.table_middle.x:
-                    path.append(Point(700, move_table_middle_y))
+                    path.append(Point(X_MIN, move_table_middle_y))
                     path.append(self.field.red_start_zone)
                 elif last_table.goal_state == FRONT and self.table_middle.x <last_table.x:
                     if self.table_under.x < self.table_middle.x:
@@ -640,19 +647,19 @@ class Path(FlipPoint):
                 else:
                     if last_table.goal.x < (self.table_middle.x - move_table_width/2 - robot_width/2):
                         path.append(Point(last_table.goal.x, move_table_middle_y))
-                        path.append(Point(700, move_table_middle_y))
+                        path.append(Point(X_MIN, move_table_middle_y))
                         path.append(self.field.red_start_zone)
                     else:
-                        path.append(Point(4400, move_table_up_y))
-                        path.append(Point(4400, 4500))
-                        path.append(Point(700, 4500))
+                        path.append(Point(X_MAX, move_table_up_y))
+                        path.append(Point(X_MAX, 4500))
+                        path.append(Point(X_MIN, 4500))
                         path.append(self.field.red_start_zone)
             else:
                 if last_table.goal_state == RIGHT:
-                    path.append(Point(4400, move_table_up_y))
+                    path.append(Point(X_MAX, move_table_up_y))
                     path.append(self.field.blue_start_zone)
                 elif last_table.goal_state == FRONT and self.table_middle.x < last_table.x:
-                    path.append(Point(4400, move_table_middle_y))
+                    path.append(Point(X_MAX, move_table_middle_y))
                     path.append(self.field.blue_start_zone)
                 elif last_table.goal_state == FRONT and last_table.x < self.table_middle.x:
                     if robot_width < abs(self.table_under.x+move_table_width/2-self.table_middle.x+move_table_width/2):
@@ -661,7 +668,7 @@ class Path(FlipPoint):
                     else:
                         path.append(Point(self.table_under.goal.x, move_table_middle_y))
                         path.append(Point(self.table_under.goal.x, 4500))
-                        path.append(Point(4400, 4500))
+                        path.append(Point(X_MAX, 4500))
                         path.append(self.field.blue_start_zone)
                 else:
                     if ((self.table_middle.x+move_table_width/2) <= last_table.goal.x) and ((self.table_under.x+move_table_width/2) <= last_table.goal.x):
@@ -670,7 +677,7 @@ class Path(FlipPoint):
                         path.append(self.field.blue_start_zone)
                     elif ((self.table_middle.x+move_table_width/2) <= last_table.goal.x):
                         path.append(Point(last_table.goal.x, move_table_middle_y))
-                        path.append(Point(4400, move_table_middle_y))
+                        path.append(Point(X_MAX, move_table_middle_y))
                         path.append(self.field.blue_start_zone)
                     elif self.table_under.x < self.table_middle.x and abs((self.table_middle.x-move_table_width/2)-(self.table_under.x+move_table_width/2)):
                         path.append(Point(self.table_up.goal.x, move_table_middle_y))
@@ -678,9 +685,9 @@ class Path(FlipPoint):
                         path.append(Point(self.table_middle.goal.x, move_table_under_y))
                         path.append(self.field.blue_start_zone)
                     else:
-                        path.append(Point(700, move_table_up_y))
-                        path.append(Point(700, 4500))
-                        path.append(Point(4400, 4500))
+                        path.append(Point(X_MIN, move_table_up_y))
+                        path.append(Point(X_MIN, 4500))
+                        path.append(Point(X_MAX, 4500))
                         path.append(self.field.blue_start_zone)
 
     def get_flip_point(self):

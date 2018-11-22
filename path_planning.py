@@ -4,6 +4,7 @@ from path.objects import (LEFT, RIGHT, FRONT, UNDER, MIDDLE, UP)
 import sys
 import coloredlogs, logging
 import threading
+import time
 
 coloredlogs.install()
 
@@ -74,13 +75,13 @@ class PathPlanning:
             else:
                 if msg == b'\x01':
                     print("1200で発射")
-                    self.shot[UNDER] = True
+                    self.late(UNDER)
                 elif msg == b'\x02':
                     print("1500で発射")
-                    self.shot[MIDDLE] = True
+                    self.late(MIDDLE)
                 elif msg == b'\x03':
                     print("1800で発射")
-                    self.shot[UP] = True
+                    self.late(UP)
                     self.retry_start = True
                 else:
                     print(msg)
@@ -93,6 +94,10 @@ class PathPlanning:
 
     def fix(self, coord):
         return (lambda x: 1250 if x < 1250 else (3750 if x > 3750 else x))(coord)
+
+    def late(self, table):
+        time.sleep(1.5)
+        self.shot[table] = True
 
     def create_instance(self, arg):
         # create instance

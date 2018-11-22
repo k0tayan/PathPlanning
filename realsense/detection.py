@@ -58,4 +58,4 @@ class Tables(Config, ApproximationFunction):
 
     @property
     def result(self):
-        return self.under.standing, self.middle.standing, self.up.standing
+        return [self.under.standing, self.middle.standing, self.up.standing]
