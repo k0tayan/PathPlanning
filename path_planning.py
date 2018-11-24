@@ -1,6 +1,7 @@
 import numpy as np
 from path import *
 from path.objects import (LEFT, RIGHT, FRONT, UNDER, MIDDLE, UP)
+from path.config import xport_ip
 import sys
 import coloredlogs, logging
 import threading
@@ -43,17 +44,17 @@ class PathPlanning:
         if self.use_send:
             try:
                 if not retry and self.serv.clientsock is None:
-                    self.tcp = Tcp(host='192.168.11.3', port=10001)
+                    self.tcp = Tcp(host=xport_ip, port=10001)
                     packet = self.tcp.create_packet(points, flip_points, retry)
                     thread = threading.Thread(target=self.send_packet, args=(packet,), daemon=True)
                     thread.start()
                 elif not retry and self.serv.clientsock:
-                    self.tcp = Tcp(host='192.168.11.3', port=10001)
+                    self.tcp = Tcp(host=xport_ip, port=10001)
                     packet = self.tcp.create_packet(points, flip_points, retry)
                     thread = threading.Thread(target=self.send_packet, args=(packet, True), daemon=True)
                     thread.start()
                 elif self.serv.clientsock is None:
-                    self.tcp = Tcp(host='192.168.11.3', port=10001)
+                    self.tcp = Tcp(host=xport_ip, port=10001)
                     packet = self.tcp.create_packet(points, flip_points, retry)
                     thread = threading.Thread(target=self.send_packet, args=(packet,), daemon=True)
                     thread.start()
