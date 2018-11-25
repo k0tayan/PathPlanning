@@ -2,7 +2,7 @@ import os
 
 
 class Config:
-    zone = 0  # zone=1 赤ゾーン zone=0 青ゾーン
+    zone = 1  # zone=1 赤ゾーン zone=0 青ゾーン
     mode = 1  # mode=0: 深度 mode=1 中心座標
     side = 0  # 横からとるか side=1　横から撮る side=0 前から撮る
     use_moving_average = 1  # 中心座標で距離を推定する場合で、移動平均を使うか　使う=1 使わない=0

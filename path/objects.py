@@ -11,8 +11,8 @@ UNDER = 0
 MIDDLE = 1
 UP = 2
 
-X_MIN = 500
-X_MAX = 4500
+X_MIN = 400
+X_MAX = 4600
 
 class Point:
     def __init__(self, x, y):
@@ -39,17 +39,17 @@ class Table(Point):
         self.goal_state: str = None
 
     def fix(self, coord):
-        if coord < 500:
-            return 500
-        elif coord > 4500:
-            return 4500
+        if coord < X_MIN:
+            return X_MIN
+        elif coord > X_MAX:
+            return X_MAX
         else:
             return coord
 
     def set_goal(self, direction):
         """
 
-        :param direction: LEFT, RIGHT, RIGHT
+        :param direction: LEFT, RIGHT, FRONT
         :return:
         """
         if direction == LEFT:

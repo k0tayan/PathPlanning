@@ -11,7 +11,7 @@ from yukari.player import Yukari
 
 from realsense.consts import NPOINTS, UNDER_NUM, MIDDLE_NUM, UP_NUM
 
-camera = 1 # なんか知らんが毎回変わる
+camera = 1  # なんか知らんが毎回変わる
 timer = 0  # 初期化
 sc = 1
 coloredlogs.install()
@@ -41,8 +41,8 @@ class App(Parameter, Utils, FieldView, Draw, Event, ):
 
         self.set_track_bar_pos(self.settings)
 
-        self.click_mode = False
         self.ptlist = PointList(NPOINTS)
+        self.click_mode = False
         logging.info('START DETECTION')
 
     def get_param(self):

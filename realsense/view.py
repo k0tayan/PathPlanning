@@ -15,7 +15,9 @@ class Draw(Config, Path):
         cv2.namedWindow(self.bar_window_name, cv2.WINDOW_AUTOSIZE)
         cv2.namedWindow(self.field_window_name, cv2.WND_PROP_FULLSCREEN)
         # cv2.setWindowProperty(field_window_name, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
-        kizunaai = cv2.imread('./kizunaai/kizunaai.jpg')
+        kizunaai = cv2.imread('./kizunaai/CSD_a3.png')
+        kizunaai = kizunaai.transpose(1, 0, 2)
+        kizunaai = kizunaai[:, ::-1]
         cv2.imshow(self.field_window_name, kizunaai)
 
     def set_track_bar_pos(self, settings: dict):
