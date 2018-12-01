@@ -14,7 +14,7 @@ v = FieldView()
 window_name = 'main'
 cv2.namedWindow(window_name)
 
-pos1, pos2, pos3, zone = 1250, 1250, 2500, 0
+pos1, pos2, pos3, zone = 1250, 1250, 2500, 1
 move_table_pos = (pos1, pos2, pos3)
 points, flip_points = planner.main((pos1, pos2, pos3, zone))
 planner.send(points, flip_points, retry=False)
@@ -28,7 +28,7 @@ k = cv2.waitKey(0)
 while True:
     k = cv2.waitKey(1)
     if k == ord('i'):
-        results = [True, True, False]
+        results = [True, True, True]
         retry_points, retry_flip_points = planner.retry((pos1, pos2, pos3, zone), results)
         planner.send(retry_points, retry_flip_points, True)
         img = v.draw_retry(move_table_pos, points, retry_points, results)

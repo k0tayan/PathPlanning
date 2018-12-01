@@ -42,7 +42,7 @@ class App(Parameter, Utils, FieldView, Draw, Event, ):
         self.set_track_bar_pos(self.settings)
 
         self.ptlist = PointList(NPOINTS)
-        self.click_mode = False
+        self.click_mode = True
         logging.info('START DETECTION')
 
     def get_param(self):
@@ -142,6 +142,9 @@ class App(Parameter, Utils, FieldView, Draw, Event, ):
         cv2.imshow(self.window_name, color_image_for_show)
         cv2.imshow(self.bar_window_name, images_for_thresh)
 
+        cv2.setMouseCallback(self.window_name, self.onMouse,
+                             [self.window_name, color_image_for_show, self.ptlist])
+
     def analyze(self):
         # スライダーの値を取得
         self.get_param()
@@ -194,7 +197,6 @@ class App(Parameter, Utils, FieldView, Draw, Event, ):
 
             tables = []  # テーブルの可能性がある輪郭をここに入れる
             if self.click_mode:
-                cv2.setMouseCallback(self.window_name, self.onMouse, [self.window_name, self.color_image_for_save, self.ptlist])
                 self.draw_click(color_image_for_show, self.ptlist.get_points())
                 if self.ptlist.is_full():
                     for i, point in enumerate(self.ptlist.get_points()):
@@ -208,12 +210,15 @@ class App(Parameter, Utils, FieldView, Draw, Event, ):
                 # 見つかった輪郭をリストに入れる
                 contours.sort(key=cv2.contourArea, reverse=True)
                 for cnt in contours:
-                    (x, y), radius = cv2.minEnclosingCircle(cnt)
-                    center = (int(x), int(y))
-                    radius = int(radius)
-                    table = Table(center, radius, 0, (x, y))
-                    if table.is_table():  # 本当にテーブルかチェック
-                        tables.append(table)  # テーブルだったらリストに追加
+                    t = self.calc_circle_level(cnt, cv2.contourArea(cnt))
+                    if t > 0.8:
+                        (x, y), radius = cv2.minEnclosingCircle(cnt)
+                        center = (int(x), int(y))
+                        radius = int(radius)
+                        color_image_for_show = cv2.circle(color_image_for_show, center, radius, (0, 255, 0), 2)
+                        table = Table(center, radius, 0, (x, y))
+                        if table.is_table():  # 本当にテーブルかチェック
+                            tables.append(table)  # テーブルだったらリストに追加
 
             # 半径が大きい順にソート
             tables = sorted(tables, reverse=True)

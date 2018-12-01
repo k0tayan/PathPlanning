@@ -13,7 +13,7 @@ class Config:
     width = 1280
     height = 720
     seconds = 10
-    send = True
+    send = False
     use_standing_detection = True
 
 
@@ -25,8 +25,6 @@ class Path:
     up_front = dir + '/measurements/front/up_front.csv'
 
     field_max_right = dir + '/measurements/front/field_max_right.csv'
-
-    keras_green_model = dir + '/realsense/sd/green_model2.h5'
 
     red_field_image = dir + '/table_images/red.png'
     blue_field_image = dir + '/table_images/blue.png'

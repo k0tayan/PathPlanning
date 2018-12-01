@@ -109,6 +109,14 @@ class Utils(Config, Path):
         t.fix()
         return t
 
+    def calc_circle_level(self, contour, area):
+        perimeter = cv2.arcLength(contour, True)
+        if perimeter == 0:
+            return 0
+        else:
+            circle_level = 4.0 * np.pi * area / (perimeter * perimeter) # perimeter = 0 のとき気をつける
+            return circle_level
+
     def save_param(self, h, s, v, lv, th, kn, rms):
         self.settings['h'] = h
         self.settings['s'] = s

@@ -1,9 +1,7 @@
-from urllib.request import urlopen
 from datetime import datetime
 
 import tensorflow as tf
 
-from PIL import Image
 import numpy as np
 import os
 
@@ -116,27 +114,6 @@ def crop_center(img, cropx, cropy):
     return img[starty:starty + cropy, startx:startx + cropx]
 
 
-def resize_down_to_1600_max_dim(image):
-    w, h = image.size
-    if h < 1600 and w < 1600:
-        return image
-
-    new_size = (1600 * w // h, 1600) if (h > w) else (1600, 1600 * h // w)
-    log_msg("resize: " + str(w) + "x" + str(h) + " to " + str(new_size[0]) + "x" + str(new_size[1]))
-    if max(new_size) / max(image.size) >= 0.5:
-        method = Image.BILINEAR
-    else:
-        method = Image.BICUBIC
-    return image.resize(new_size, method)
-
-
-def predict_url(imageUrl):
-    log_msg("Predicting from url: " + imageUrl)
-    with urlopen(imageUrl) as testImage:
-        image = Image.open(testImage)
-        return predict_image(image)
-
-
 def convert_to_nparray(image):
     # RGB -> BGR
     log_msg("Convert to numpy array")
@@ -144,41 +121,9 @@ def convert_to_nparray(image):
     return image[:, :, (2, 1, 0)]
 
 
-def update_orientation(image):
-    exif_orientation_tag = 0x0112
-    if hasattr(image, '_getexif'):
-        exif = image._getexif()
-        if exif != None and exif_orientation_tag in exif:
-            orientation = exif.get(exif_orientation_tag, 1)
-            log_msg('Image has EXIF Orientation: ' + str(orientation))
-            # orientation is 1 based, shift to zero based and flip/transpose based on 0-based values
-            orientation -= 1
-            if orientation >= 4:
-                image = image.transpose(Image.TRANSPOSE)
-            if orientation == 2 or orientation == 3 or orientation == 6 or orientation == 7:
-                image = image.transpose(Image.FLIP_TOP_BOTTOM)
-            if orientation == 1 or orientation == 2 or orientation == 5 or orientation == 6:
-                image = image.transpose(Image.FLIP_LEFT_RIGHT)
-    return image
-
-
 def predict_image(image):
     log_msg('Predicting image')
     try:
-        """if image.mode != "RGB":
-            log_msg("Converting to RGB")
-            image.convert("RGB")
-
-        w,h = image.size
-        log_msg("Image size: " + str(w) + "x" + str(h))"""
-
-        # Update orientation based on EXIF tags
-        # image = update_orientation(image)
-
-        # If the image has either w or h greater than 1600 we resize it down respecting
-        # aspect ratio such that the largest dimention is 1600
-        # image = resize_down_to_1600_max_dim(image)
-
         # Convert image to numpy array
         image = convert_to_nparray(image)
 

@@ -1,0 +1,10 @@
+scipy==1.0.1
+simpleaudio==1.0.2
+six==1.11.0
+opencv_contrib_python==3.4.3.18
+setuptools==39.1.0
+coloredlogs==10.0
+pydub==0.23.0
+tensorflow
+numpy==1.14.3
+matplotlib==2.0.2
