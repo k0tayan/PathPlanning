@@ -9,7 +9,7 @@ Detects the location of the table with image recognition and creates a route for
 
 ## Requirement
 - Python 3.6.2 :: Anaconda custom (64-bit)
-- Intel RealSense Depth Camera D435
+- Intel RealSense Depth Camera D415
 - pyrealsense2(you need to build sdk by yourself [github](https://github.com/IntelRealSense/librealsense/tree/master/wrappers/python))
 
 ## How to use
